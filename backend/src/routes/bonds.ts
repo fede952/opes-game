@@ -32,28 +32,38 @@
  * Both operations move Sestertius between two users: issuer and buyer.
  * To prevent deadlocks when two transactions involving the same pair of users
  * run concurrently, we always acquire FOR UPDATE locks on their SESTERTIUS
- * inventory rows in alphabetical order by user_id (UUID string comparison).
+ * inventory rows in ASCENDING numeric user_id order.
  *
- *   const [firstId, secondId] = [issuerId, buyerId].sort();
+ *   const [firstId, secondId] = [issuerId, buyerId].sort((a, b) => a - b);
  *   // Lock firstId's SESTERTIUS FOR UPDATE
  *   // Lock secondId's SESTERTIUS FOR UPDATE
  *
- * This guarantees a consistent global lock order regardless of which transaction
- * starts first, eliminating circular-wait deadlocks.
+ * Because user IDs are integers, we sort numerically (not lexicographically).
+ * Lexicographic sort of integers gives wrong results: e.g., 9 > 10 as strings.
+ * Numeric sort is the correct, consistent global ordering that prevents deadlocks.
  *
  * FULL LOCK ORDER IN /buy:
  *   [1] Lock bond row                           (prevents double-buy)
- *   [2] Lock SESTERTIUS of min(issuerId, buyerId) by user_id ASC
- *   [3] Lock SESTERTIUS of max(issuerId, buyerId) by user_id ASC
+ *   [2] Lock SESTERTIUS of min(issuerId, buyerId) by user_id ASC (numeric)
+ *   [3] Lock SESTERTIUS of max(issuerId, buyerId) by user_id ASC (numeric)
  *   [4] Validate buyer has sufficient Sestertius
  *   [5] Execute transfer + update bond
  *
  * FULL LOCK ORDER IN /repay:
  *   [1] Lock bond row                             (ensures BOUGHT status)
- *   [2] Lock SESTERTIUS of min(issuerId, buyerId) by user_id ASC
- *   [3] Lock SESTERTIUS of max(issuerId, buyerId) by user_id ASC
+ *   [2] Lock SESTERTIUS of min(issuerId, buyerId) by user_id ASC (numeric)
+ *   [3] Lock SESTERTIUS of max(issuerId, buyerId) by user_id ASC (numeric)
  *   [4] Validate issuer has sufficient Sestertius
  *   [5] Execute repayment + update bond
+ *
+ * ================================================================
+ * INTEGER IDs
+ * ================================================================
+ *
+ * users.id and bonds.id are both INTEGER/SERIAL in the database.
+ * All user ID comparisons pass Number(req.userId!) so the pg driver
+ * sends the value as an integer, not as text or uuid.
+ * Bond IDs from the request body are parsed with parseInt() before use.
  */
 
 import { Router, Request, Response, NextFunction } from 'express';
@@ -70,9 +80,9 @@ router.use(authMiddleware);
 // ================================================================
 
 interface BondRow {
-  id:                       string;
-  issuer_id:                string;
-  buyer_id:                 string | null;
+  id:                       number;
+  issuer_id:                number;
+  buyer_id:                 number | null;
   principal_amount:         number;
   interest_rate_percentage: number;
   status:                   string;
@@ -87,8 +97,8 @@ interface BondRow {
 
 /**
  * Returns three views of the bond market:
- *   market:        All ISSUED bonds (available to purchase), with issuer username.
- *   my_issued:     All bonds issued by the caller (any status except DEFAULTED? — all).
+ *   market:         All ISSUED bonds (available to purchase), with issuer username.
+ *   my_issued:      All bonds issued by the caller (all statuses for history).
  *   my_investments: All bonds where the caller is the buyer (BOUGHT or REPAID).
  *
  * SUCCESS: 200 OK
@@ -98,7 +108,10 @@ router.get(
   '/',
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const userId = req.userId!;
+      // Number() converts "42" → 42 and the raw number 42 → 42.
+      // Passing an integer ensures PostgreSQL uses integer comparison,
+      // avoiding the "operator does not exist: integer = uuid" error.
+      const userId = Number(req.userId!);
 
       const [marketResult, myIssuedResult, myInvestmentsResult] = await Promise.all([
 
@@ -189,7 +202,7 @@ router.post(
   '/issue',
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const issuerId = req.userId!;
+      const issuerId = Number(req.userId!);
 
       const { principal_amount, interest_rate_percentage } = req.body as {
         principal_amount?:         unknown;
@@ -217,7 +230,7 @@ router.post(
       }
 
       const result = await query<{
-        id:                       string;
+        id:                       number;
         principal_amount:         number;
         interest_rate_percentage: number;
         status:                   string;
@@ -255,13 +268,13 @@ router.post(
 /**
  * Purchases an ISSUED bond. Transfers principal from buyer to issuer immediately.
  *
- * Request body: { bond_id: string }
+ * Request body: { bond_id: number }
  *
  * TRANSACTION STEPS:
  *   [1] Lock bond row                              (prevents double-buy)
  *   [2] Validate ISSUED + caller is not the issuer
- *   [3] Lock SESTERTIUS of min(issuerId, buyerId)  (alphabetical)
- *   [4] Lock SESTERTIUS of max(issuerId, buyerId)  (alphabetical)
+ *   [3] Lock SESTERTIUS of min(issuerId, buyerId)  (numeric ascending)
+ *   [4] Lock SESTERTIUS of max(issuerId, buyerId)  (numeric ascending)
  *   [5] Validate buyer has enough Sestertius
  *   [6] Deduct from buyer
  *   [7] Credit issuer (upsert)
@@ -274,12 +287,19 @@ router.post(
   '/buy',
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const buyerId = req.userId!;
+      const buyerId = Number(req.userId!);
 
       const { bond_id } = req.body as { bond_id?: unknown };
 
-      if (typeof bond_id !== 'string' || bond_id.trim().length === 0) {
-        res.status(400).json({ error: 'bond_id is required.' });
+      // Accept bond_id as either a number or a numeric string.
+      // bonds.id is SERIAL (integer) in the database.
+      const parsedBondId =
+        typeof bond_id === 'number'
+          ? Math.floor(bond_id)
+          : parseInt(String(bond_id), 10);
+
+      if (!Number.isFinite(parsedBondId) || parsedBondId <= 0) {
+        res.status(400).json({ error: 'bond_id must be a positive integer.' });
         return;
       }
 
@@ -287,8 +307,8 @@ router.post(
 
         // ---- STEP 1: Lock the bond row ----
         const bondResult = await client.query<{
-          id:               string;
-          issuer_id:        string;
+          id:               number;
+          issuer_id:        number;
           principal_amount: number;
           status:           string;
         }>(
@@ -296,7 +316,7 @@ router.post(
            FROM   bonds
            WHERE  id = $1
            FOR UPDATE`,
-          [bond_id.trim()]
+          [parsedBondId]
         );
 
         if (bondResult.rowCount === 0) {
@@ -317,11 +337,12 @@ router.post(
         const issuerId = bond.issuer_id;
         const principal = bond.principal_amount;
 
-        // ---- STEPS 3–4: Lock both SESTERTIUS rows in alphabetical user_id order ----
+        // ---- STEPS 3–4: Lock both SESTERTIUS rows in numeric user_id order ----
         //
-        // Alphabetical sort of UUIDs ensures a globally consistent lock acquisition
-        // order, preventing circular-wait deadlocks.
-        const [firstId, secondId] = [issuerId, buyerId].sort();
+        // Sort NUMERICALLY (not lexicographically) because user IDs are integers.
+        // Lexicographic sort: "9" > "10" (wrong). Numeric sort: 9 < 10 (correct).
+        // Consistent ordering prevents circular-wait deadlocks.
+        const [firstId, secondId] = [issuerId, buyerId].sort((a, b) => a - b);
 
         await client.query(
           `SELECT amount
@@ -418,15 +439,15 @@ router.post(
 /**
  * The issuer repays principal + interest to the buyer.
  *
- * Request body: { bond_id: string }
+ * Request body: { bond_id: number }
  *
  * total_repayment = principal + FLOOR(principal × interest_rate_percentage / 100)
  *
  * TRANSACTION STEPS:
  *   [1] Lock bond row
  *   [2] Validate BOUGHT + caller is issuer
- *   [3] Lock SESTERTIUS of min(issuerId, buyerId)  (alphabetical)
- *   [4] Lock SESTERTIUS of max(issuerId, buyerId)  (alphabetical)
+ *   [3] Lock SESTERTIUS of min(issuerId, buyerId)  (numeric ascending)
+ *   [4] Lock SESTERTIUS of max(issuerId, buyerId)  (numeric ascending)
  *   [5] Validate issuer has enough Sestertius
  *   [6] Deduct from issuer
  *   [7] Credit buyer (upsert)
@@ -439,12 +460,17 @@ router.post(
   '/repay',
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const issuerId = req.userId!;
+      const issuerId = Number(req.userId!);
 
       const { bond_id } = req.body as { bond_id?: unknown };
 
-      if (typeof bond_id !== 'string' || bond_id.trim().length === 0) {
-        res.status(400).json({ error: 'bond_id is required.' });
+      const parsedBondId =
+        typeof bond_id === 'number'
+          ? Math.floor(bond_id)
+          : parseInt(String(bond_id), 10);
+
+      if (!Number.isFinite(parsedBondId) || parsedBondId <= 0) {
+        res.status(400).json({ error: 'bond_id must be a positive integer.' });
         return;
       }
 
@@ -452,9 +478,9 @@ router.post(
 
         // ---- STEP 1: Lock the bond row ----
         const bondResult = await client.query<{
-          id:                       string;
-          issuer_id:                string;
-          buyer_id:                 string;
+          id:                       number;
+          issuer_id:                number;
+          buyer_id:                 number;
           principal_amount:         number;
           interest_rate_percentage: number;
           status:                   string;
@@ -463,7 +489,7 @@ router.post(
            FROM   bonds
            WHERE  id = $1
            FOR UPDATE`,
-          [bond_id.trim()]
+          [parsedBondId]
         );
 
         if (bondResult.rowCount === 0) {
@@ -485,8 +511,8 @@ router.post(
         const totalRepayment = bond.principal_amount +
           Math.floor(bond.principal_amount * bond.interest_rate_percentage / 100);
 
-        // ---- STEPS 3–4: Lock both SESTERTIUS rows in alphabetical user_id order ----
-        const [firstId, secondId] = [issuerId, buyerId].sort();
+        // ---- STEPS 3–4: Lock both SESTERTIUS rows in numeric user_id order ----
+        const [firstId, secondId] = [issuerId, buyerId].sort((a, b) => a - b);
 
         await client.query(
           `SELECT amount
