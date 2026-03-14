@@ -12,7 +12,9 @@
       "Bash(grep \"import './index.css'\" C:/Users/fedes/dev/sim/frontend/src/main.tsx && grep \"@tailwind\" C:/Users/fedes/dev/sim/frontend/src/index.css && npx tsc --noEmit 2>&1 | head -5 && echo \"TS OK\")",
       "Bash(awk 'NR>=702 && NR<=1217' /c/Users/fedes/dev/sim/frontend/src/components/Dashboard.tsx | grep -o '<div\\\\|</div>' | sort | uniq -c)",
       "Bash(awk 'NR>=624 && NR<=1218' /c/Users/fedes/dev/sim/frontend/src/components/Dashboard.tsx | grep -o '<div\\\\|</div>' | sort | uniq -c)",
-      "Bash(awk 'NR>=730 && NR<=1100' /c/Users/fedes/dev/sim/frontend/src/components/Dashboard.tsx | grep -n '<div\\\\|</div>' | head -80)"
+      "Bash(awk 'NR>=730 && NR<=1100' /c/Users/fedes/dev/sim/frontend/src/components/Dashboard.tsx | grep -n '<div\\\\|</div>' | head -80)",
+      "Bash(find /c/Users/fedes/dev/sim/backend -name \"*.sql\" -o -name \"*migration*\" -o -name \"*schema*\" 2>/dev/null | head -20)",
+      "Bash(grep -h \"CREATE TABLE\" /c/Users/fedes/dev/sim/backend/src/db/*.sql | sort -u)"
     ]
   }
 }
