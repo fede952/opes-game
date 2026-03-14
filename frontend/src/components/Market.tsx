@@ -733,7 +733,7 @@ const Market: React.FC = () => {
                   borderRadius: 8,
                   fontSize: 12,
                 }}
-                formatter={(value: number) => [`${value} ⚙`, 'Price']}
+                formatter={(value: unknown) => [`${value as number} ⚙`, 'Price']}
               />
               <ReferenceLine y={FRUMENTUM_TREND[0].price} stroke="#D4AF3755" strokeDasharray="4 4" />
               <Area
