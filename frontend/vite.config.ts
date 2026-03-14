@@ -19,9 +19,30 @@
  *       are loaded on demand, improving initial page load performance.
  *     - Asset hashing: output filenames include a content hash (e.g., App.a3f2b1.js)
  *       so browsers can cache assets indefinitely and only re-download changed ones.
+ *
+ * ================================================================
+ * MODULE 5: PWA SETUP (VitePWA plugin)
+ * ================================================================
+ *
+ * The VitePWA plugin does three things automatically:
+ *   1. Generates a service worker (using Workbox) that caches assets
+ *      so the app loads instantly even on slow connections.
+ *   2. Injects a <link rel="manifest"> into index.html pointing to the
+ *      generated web app manifest (opes.webmanifest).
+ *   3. Injects the <meta name="theme-color"> tag.
+ *
+ * registerType: 'prompt'
+ *   The service worker will NOT silently update. Instead, our App.tsx
+ *   listens for the `beforeinstallprompt` event and shows a banner.
+ *   This gives players control over when the app updates.
+ *
+ * ICONS: drop your PNG files into public/icons/ before running a
+ * production build. The manifest references icon-192.png and icon-512.png.
+ * See public/icons/README.md for size and format requirements.
  */
 import { defineConfig } from 'vite';
-import react from '@vitejs/plugin-react';
+import react           from '@vitejs/plugin-react';
+import { VitePWA }     from 'vite-plugin-pwa';
 
 export default defineConfig({
   plugins: [
@@ -32,6 +53,60 @@ export default defineConfig({
      *   - Automatic React import (no need for 'import React from "react"' in every file).
      */
     react(),
+
+    /**
+     * Progressive Web App plugin — generates a service worker + web manifest.
+     *
+     * Once built and deployed, players on mobile can tap "Add to Home Screen"
+     * and launch Opes in standalone mode (no browser UI bar).
+     */
+    VitePWA({
+      registerType: 'prompt',
+
+      /**
+       * Assets Vite-PWA should pre-cache so the app shell loads offline.
+       * Icons are included so the home-screen icon is available immediately.
+       */
+      includeAssets: ['icons/icon-192.png', 'icons/icon-512.png'],
+
+      /**
+       * Web App Manifest — tells the browser how to present the app when
+       * installed (name, colours, orientation, icons).
+       *
+       * theme_color    : #2C2A29 = roman-dark (status bar colour on Android)
+       * background_color: #FDFCF7 = roman-ivory (splash screen background)
+       */
+      manifest: {
+        name:             'Opes: Roman Empire',
+        short_name:       'Opes',
+        description:      'A multiplayer economic simulation set in Ancient Rome & Greece.',
+        theme_color:      '#2C2A29',
+        background_color: '#FDFCF7',
+        display:          'standalone',
+        orientation:      'portrait',
+        start_url:        '/',
+        icons: [
+          {
+            src:   '/icons/icon-192.png',
+            sizes: '192x192',
+            type:  'image/png',
+          },
+          {
+            src:   '/icons/icon-512.png',
+            sizes: '512x512',
+            type:  'image/png',
+          },
+          {
+            // "maskable" purpose lets Android use adaptive icons
+            // (the icon is cropped into a circle, square, etc. based on device).
+            src:     '/icons/icon-512.png',
+            sizes:   '512x512',
+            type:    'image/png',
+            purpose: 'maskable',
+          },
+        ],
+      },
+    }),
   ],
 
   server: {

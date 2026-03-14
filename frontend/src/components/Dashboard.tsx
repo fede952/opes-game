@@ -747,20 +747,26 @@ const Dashboard: React.FC = () => {
               <LanguageSelector />
               <button
                 onClick={logout}
-                className="px-3 py-1.5 border border-roman-gold/50 text-roman-gold rounded text-xs cursor-pointer hover:bg-roman-gold hover:text-roman-dark transition-colors duration-150"
+                title={t('auth.logoutButton')}
+                className="px-3 py-1.5 border border-roman-gold/50 text-roman-gold rounded text-xs cursor-pointer hover:bg-roman-gold hover:text-roman-dark transition-colors duration-150 whitespace-nowrap"
               >
-                {t('auth.logoutButton')}
+                {/* Full label on sm+; power symbol on tiny screens to keep navbar compact */}
+                <span className="hidden sm:inline">{t('auth.logoutButton')}</span>
+                <span className="sm:hidden" aria-hidden="true">⏻</span>
               </button>
             </div>
           </div>
 
-          {/* ---- Tab navigation row ---- */}
+          {/* ---- Tab navigation row (desktop only) ---- */}
           {/*
            * Tabs sit on the dark background with a gold underline on the active tab.
            * Using border-b-2 on each button + border-transparent on inactive ones
            * creates a flush underline effect without any visible gap.
+           *
+           * On mobile (< md) this row is hidden. Navigation moves to the fixed
+           * bottom bar rendered at the bottom of the page (see "MOBILE BOTTOM NAV").
            */}
-          <nav className="flex">
+          <nav className="hidden md:flex">
             {(['production', 'market', 'contracts', 'bank', 'senate'] as const).map((view) => (
               <button
                 key={view}
@@ -788,7 +794,9 @@ const Dashboard: React.FC = () => {
       {/* ================================================================ */}
       {/* MAIN CONTENT AREA                                                */}
       {/* ================================================================ */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
+      {/* pb-20 on mobile reserves space above the fixed bottom navigation bar.
+        * md:pb-6 restores normal bottom padding on larger screens. */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 pb-20 md:pb-6">
 
         {/* ---- EMPIRE EVENT BANNER (Module 2) ----
          * Shown on all tabs EXCEPT 'market', where Market.tsx renders
@@ -1341,6 +1349,58 @@ const Dashboard: React.FC = () => {
 
       </div>
       {/* end max-w-7xl content area */}
+
+      {/* ================================================================ */}
+      {/* MOBILE BOTTOM NAVIGATION BAR (Module 5, Task 1)                 */}
+      {/* ================================================================ */}
+      {/*
+       * Replaces the top tab row on small screens (< md breakpoint).
+       * Mirrors native mobile app navigation conventions:
+       *   - Fixed to the bottom of the viewport so it is always reachable.
+       *   - Each tab has a large touch target (min h-14) for easy tapping.
+       *   - Active tab gets the roman-gold accent; inactive tabs are muted.
+       *
+       * Hidden on md+ — desktop players use the horizontal tab row in the
+       * sticky navbar above.
+       *
+       * z-30 sits above regular content but below the PWA install banner (z-50).
+       */}
+      <nav
+        aria-label="Main navigation"
+        className="fixed bottom-0 left-0 right-0 z-30 bg-roman-dark border-t border-white/10 flex md:hidden"
+      >
+        {(
+          [
+            { view: 'production', icon: '🏛', labelKey: 'market.tabProduction' },
+            { view: 'market',     icon: '⚖️', labelKey: 'market.tabMarket'     },
+            { view: 'contracts',  icon: '📜', labelKey: 'market.tabContracts'  },
+            { view: 'bank',       icon: '💰', labelKey: 'market.tabBank'       },
+            { view: 'senate',     icon: '👑', labelKey: 'market.tabSenate'     },
+          ] as const
+        ).map(({ view, icon, labelKey }) => (
+          <button
+            key={view}
+            onClick={() => setActiveView(view)}
+            aria-current={activeView === view ? 'page' : undefined}
+            className={[
+              'flex-1 flex flex-col items-center justify-center gap-0.5 py-2 min-h-[3.5rem]',
+              'border-none cursor-pointer transition-colors duration-150 bg-transparent',
+              activeView === view
+                ? 'text-roman-gold'
+                : 'text-roman-marble/40 hover:text-roman-marble/70',
+            ].join(' ')}
+          >
+            <span className="text-lg leading-none" aria-hidden="true">{icon}</span>
+            <span className="text-[10px] font-bold uppercase tracking-wide leading-none">
+              {t(labelKey)}
+            </span>
+            {/* Active indicator dot */}
+            {activeView === view && (
+              <span className="w-1 h-1 rounded-full bg-roman-gold mt-0.5" aria-hidden="true" />
+            )}
+          </button>
+        ))}
+      </nav>
 
     </div>
   );

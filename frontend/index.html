@@ -27,11 +27,22 @@
 
     <meta name="description" content="Opes — A browser-based multiplayer economic simulation set in Ancient Rome and Greece." />
 
+    <!-- PWA theme colour — matches roman-dark (#2C2A29).
+         Android Chrome uses this for the status bar when the app is installed. -->
+    <meta name="theme-color" content="#2C2A29" />
+
+    <!-- iOS "Add to Home Screen" — Safari ignores the Web App Manifest, so
+         these tags replicate the same information for Apple devices. -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Opes" />
+    <link rel="apple-touch-icon" href="/icons/icon-192.png" />
+
     <!--
       Vite will replace this with the actual favicon path from the /public directory.
-      You can replace vite.svg with a custom Opes icon (toga, coin, laurel wreath, etc.)
+      Drop icon-192.png into public/icons/ and update this href to use it.
     -->
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <link rel="icon" type="image/png" href="/icons/icon-192.png" />
 
     <title>Opes — Ancient Economic Simulation</title>
   </head>
