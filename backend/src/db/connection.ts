@@ -107,51 +107,44 @@ dotenv.config();
 /**
  * The singleton PostgreSQL connection pool.
  *
- * All configuration is read from environment variables.
- * SECURITY: Database credentials must NEVER be hard-coded in source files.
- * Source code is often committed to version control and may be shared with
- * contractors, open-sourced accidentally, or leaked in a git breach.
- * Secrets in environment variables are kept outside the codebase entirely.
+ * Connection is driven entirely by DATABASE_URL — a single connection string
+ * in the format:  postgresql://user:password@host:port/dbname
+ *
+ * Render, Neon, and most managed PostgreSQL providers expose exactly this
+ * variable. Using it avoids the need to keep six separate env vars in sync
+ * (DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASSWORD, DB_SSL) and eliminates
+ * the risk of silently falling back to localhost when any one of them is missing.
+ *
+ * SECURITY: The connection string contains credentials — never hard-code it
+ * here or commit it to version control. It must live only in environment vars.
  */
+const DATABASE_URL = process.env.DATABASE_URL;
+
+if (!DATABASE_URL) {
+  throw new Error('CRITICAL: DATABASE_URL is not defined in environment variables!');
+}
+
+console.log('[Database] Attempting to connect to Neon...');
+
 const pool = new Pool({
-  host:     process.env.DB_HOST     ?? 'localhost',
-  port:     parseInt(process.env.DB_PORT ?? '5432', 10),
-  database: process.env.DB_NAME     ?? 'opes_db',
-  user:     process.env.DB_USER     ?? 'postgres',
-  password: process.env.DB_PASSWORD,  // Intentionally no default — must be explicitly set.
+  connectionString: DATABASE_URL,
 
   /**
-   * Maximum number of concurrent connections maintained in the pool.
-   *
-   * Rule of thumb for a web app: start with 10, increase under load.
-   * Too low: requests queue up and slow down under load.
-   * Too high: PostgreSQL server runs out of connections (it also has a limit).
-   *
-   * SCALABILITY: If you run multiple instances of this server (horizontal scaling),
-   * the TOTAL connections across ALL instances = (max * numberOfInstances).
-   * Plan accordingly to stay under your DB's max_connections.
+   * ssl.rejectUnauthorized: false — required by Neon, Render Postgres, and most
+   * managed PostgreSQL providers. Their TLS certificates use intermediate CAs
+   * that Node's default verifier rejects. The connection is still fully encrypted;
+   * this flag only skips CA-chain verification, which managed providers don't support.
+   */
+  ssl: { rejectUnauthorized: false },
+
+  /**
+   * Maximum concurrent connections in the pool.
+   * Neon's free tier caps at 100 total — 10 per instance is safe.
    */
   max: parseInt(process.env.DB_MAX_CONNECTIONS ?? '10', 10),
 
-  /**
-   * How long (milliseconds) an idle connection can sit in the pool before
-   * being automatically closed and removed.
-   *
-   * This frees resources on the PostgreSQL server during off-peak hours
-   * (e.g., low player count overnight). The pool will create new connections
-   * when traffic picks up again.
-   */
-  idleTimeoutMillis: 30_000,
-
-  /**
-   * How long (milliseconds) to wait for a connection to become available
-   * from the pool. If all connections are busy and none are freed within
-   * this time, the request fails with a timeout error.
-   *
-   * This is a safety valve: it prevents requests from hanging indefinitely
-   * during a database overload event, instead failing fast with a clear error.
-   */
-  connectionTimeoutMillis: 5_000,
+  idleTimeoutMillis:       30_000,
+  connectionTimeoutMillis:  5_000,
 });
 
 // ================================================================
