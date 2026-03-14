@@ -96,6 +96,7 @@ const Bank: React.FC = () => {
   // ---- ISSUE FORM ----
   const [issuePrincipal, setIssuePrincipal] = useState<string>('');
   const [issueRate,      setIssueRate]      = useState<string>('');
+  const [issueDays,      setIssueDays]      = useState<string>('7');
   const [issueLoading,   setIssueLoading]   = useState<boolean>(false);
   const [issueError,     setIssueError]     = useState<string | null>(null);
   const [issueSuccess,   setIssueSuccess]   = useState<string | null>(null);
@@ -140,6 +141,7 @@ const Bank: React.FC = () => {
 
     const parsedPrincipal = parseInt(issuePrincipal, 10);
     const parsedRate      = parseInt(issueRate,      10);
+    const parsedDays      = parseInt(issueDays,      10);
 
     if (!Number.isFinite(parsedPrincipal) || parsedPrincipal <= 0) {
       setIssueError(t('bonds.errors.invalidPrincipal'));
@@ -147,6 +149,10 @@ const Bank: React.FC = () => {
     }
     if (!Number.isFinite(parsedRate) || parsedRate < 0) {
       setIssueError(t('bonds.errors.invalidRate'));
+      return;
+    }
+    if (!Number.isFinite(parsedDays) || parsedDays < 1) {
+      setIssueError(t('bonds.errors.invalidDays'));
       return;
     }
 
@@ -157,11 +163,13 @@ const Bank: React.FC = () => {
         body:   JSON.stringify({
           principal_amount:         parsedPrincipal,
           interest_rate_percentage: parsedRate,
+          duration_days:            parsedDays,
         }),
       });
       setIssueSuccess(data.message);
       setIssuePrincipal('');
       setIssueRate('');
+      setIssueDays('7');
       await fetchBonds();
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
@@ -416,6 +424,18 @@ const Bank: React.FC = () => {
                 value={issueRate}
                 onChange={(e) => setIssueRate(e.target.value)}
                 placeholder="e.g. 10"
+                className={inputCls}
+              />
+            </div>
+
+            {/* Duration */}
+            <div className="flex flex-col gap-1 min-w-[130px]">
+              <label className="text-xs text-gray-500">{t('bonds.daysLabel')}</label>
+              <input
+                type="number" min={1}
+                value={issueDays}
+                onChange={(e) => setIssueDays(e.target.value)}
+                placeholder="e.g. 7"
                 className={inputCls}
               />
             </div>

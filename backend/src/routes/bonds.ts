@@ -193,7 +193,8 @@ router.get(
  * Issues a new bond. No money moves — the bond is posted to the market
  * where any other player can buy it.
  *
- * Request body: { principal_amount: number, interest_rate_percentage: number }
+ * Request body: { principal_amount: number, interest_rate_percentage: number, duration_days?: number }
+ *   duration_days defaults to 7 if omitted.
  *
  * SUCCESS: 201 Created
  * ERRORS:  400 (validation)
@@ -204,9 +205,10 @@ router.post(
     try {
       const issuerId = Number(req.userId!);
 
-      const { principal_amount, interest_rate_percentage } = req.body as {
+      const { principal_amount, interest_rate_percentage, duration_days } = req.body as {
         principal_amount?:         unknown;
         interest_rate_percentage?: unknown;
+        duration_days?:            unknown;
       };
 
       const parsedPrincipal =
@@ -229,17 +231,32 @@ router.post(
         return;
       }
 
+      // duration_days is required by the DB (NOT NULL). Default to 7 if the
+      // frontend omits it so we never insert NULL and trigger a constraint error.
+      const parsedDays =
+        duration_days === undefined || duration_days === null
+          ? 7
+          : typeof duration_days === 'number'
+            ? Math.floor(duration_days)
+            : parseInt(String(duration_days), 10);
+
+      if (!Number.isFinite(parsedDays) || parsedDays < 1) {
+        res.status(400).json({ error: 'duration_days must be a positive integer.' });
+        return;
+      }
+
       const result = await query<{
         id:                       number;
         principal_amount:         number;
         interest_rate_percentage: number;
+        duration_days:            number;
         status:                   string;
         created_at:               string;
       }>(
-        `INSERT INTO bonds (issuer_id, principal_amount, interest_rate_percentage)
-         VALUES ($1, $2, $3)
-         RETURNING id, principal_amount, interest_rate_percentage, status, created_at`,
-        [issuerId, parsedPrincipal, parsedRate]
+        `INSERT INTO bonds (issuer_id, principal_amount, interest_rate_percentage, duration_days)
+         VALUES ($1, $2, $3, $4)
+         RETURNING id, principal_amount, interest_rate_percentage, duration_days, status, created_at`,
+        [issuerId, parsedPrincipal, parsedRate, parsedDays]
       );
 
       const bond = result.rows[0];
@@ -247,7 +264,7 @@ router.post(
 
       res.status(201).json({
         message: `Bond issued for ${parsedPrincipal} Sestertius at ${parsedRate}% interest ` +
-                 `(total repayment: ${totalRepayment} Sestertius). Listed on the market.`,
+                 `over ${parsedDays} day(s) (total repayment: ${totalRepayment} Sestertius). Listed on the market.`,
         bond,
       });
 
