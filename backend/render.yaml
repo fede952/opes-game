@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: opes-backend
+    env: node
+    # Build: install deps then compile TypeScript → dist/
+    buildCommand: npm install && npm run build
+    # Start: run the compiled JS (dist/ is gitignored, so this only works
+    # after buildCommand produces it — never stale cached source)
+    startCommand: npm run start

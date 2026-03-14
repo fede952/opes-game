@@ -127,6 +127,7 @@ const app: Application = express();
  * means ANY website on the internet can make authenticated requests to your
  * API using your players' sessions/cookies — a severe CSRF vulnerability.
  */
+// DEPLOY_VERSION: 1.0.1
 const CORS_WHITELIST = [
   'https://opes.federicosella.com',
   'https://opes-game.pages.dev',
@@ -138,9 +139,11 @@ console.log('[CORS] Whitelist initialized with:', CORS_WHITELIST);
 app.use(
   cors({
     origin: (origin, callback) => {
-      console.log('[CORS Check] Request from origin:', origin);
+      // Strip trailing slash defensively — some proxies/CDNs append one.
+      const normalised = origin?.replace(/\/$/, '');
+      console.log('[CORS Check] Request from origin:', origin, '→ normalised:', normalised);
 
-      if (CORS_WHITELIST.includes(origin ?? '') || !origin) {
+      if (!normalised || CORS_WHITELIST.includes(normalised)) {
         callback(null, true);
       } else {
         callback(new Error(`CORS: Origin '${origin}' is not permitted.`));
