@@ -139,33 +139,40 @@ app.use(helmet());
 /**
  * MIDDLEWARE 2: CORS — Cross-Origin Resource Sharing
  *
- * Browsers enforce the "Same-Origin Policy": JavaScript on page A (port 3000)
+ * Browsers enforce the "Same-Origin Policy": JavaScript on page A (port 5173)
  * is blocked from making requests to server B (port 3001) by default.
  * CORS headers tell the browser which external origins are explicitly permitted.
- *
- * We configure this carefully per-environment:
- *   - Development: Allow localhost:3000 (the Vite dev server).
- *   - Production:  Allow ONLY the exact production frontend domain.
  *
  * SECURITY: NEVER use cors({ origin: '*' }) in production. Wildcard CORS
  * means ANY website on the internet can make authenticated requests to your
  * API using your players' sessions/cookies — a severe CSRF vulnerability.
+ *
+ * WHY A HARDCODED WHITELIST HERE (not env vars)?
+ * These are the canonical public URLs of the Opes frontend — they change only
+ * when the deployment topology changes, not per-environment. Hardcoding them
+ * prevents a misconfigured env var from silently blocking all frontend traffic
+ * in production. Local dev is the only entry that varies across machines.
  */
-const allowedOrigins: string[] =
-  NODE_ENV === 'production'
-    ? [process.env.FRONTEND_URL ?? ''] // Must be set in production .env
-    : ['http://localhost:3000', 'http://127.0.0.1:3000'];
+const CORS_WHITELIST: ReadonlySet<string> = new Set([
+  'https://opes.federicosella.com', // Custom domain (Cloudflare Pages)
+  'https://opes-game.pages.dev',    // Default Cloudflare Pages domain
+  'http://localhost:5173',          // Vite dev server (local development)
+]);
 
 app.use(
   cors({
     origin: (incomingOrigin, callback) => {
       // Allow requests with no Origin header (e.g., Postman, curl, server-to-server).
+      // These are not browser cross-origin requests so CORS rules don't apply.
       if (!incomingOrigin) {
         callback(null, true);
         return;
       }
 
-      if (allowedOrigins.includes(incomingOrigin)) {
+      if (CORS_WHITELIST.has(incomingOrigin)) {
+        // Log every allowed cross-origin request so we can confirm CORS is working
+        // in the Render logs after a deployment, without exposing a debug endpoint.
+        console.log(`[CORS] Allowed origin: ${incomingOrigin}`);
         callback(null, true);
       } else {
         callback(new Error(`CORS: Origin '${incomingOrigin}' is not permitted.`));
@@ -173,9 +180,9 @@ app.use(
     },
 
     /**
-     * Allow cookies and Authorization headers to be sent with cross-origin
-     * requests. This is required for session-based authentication.
-     * Note: When credentials is true, the 'origin' cannot be a wildcard '*'.
+     * credentials: true allows the browser to send the Authorization header
+     * (our JWT Bearer token) with cross-origin requests.
+     * When this is true, the origin MUST be a specific value — never '*'.
      */
     credentials: true,
   })
