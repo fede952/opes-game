@@ -201,6 +201,24 @@
     }
   },
 
+  "events": {
+    "PAX_ROMANA": {
+      "name":        "Pax Romana",
+      "description": "O Império está em paz. Todos os preços de comércio são normais.",
+      "effect":      "Preços normais"
+    },
+    "WAR_IN_GAUL": {
+      "name":        "Guerra na Gália",
+      "description": "As legiões marcham para o norte. As tropas demandam madeira e grão.",
+      "effect":      "Madeira +50% · Grão +50% · Farinha +20%"
+    },
+    "FAMINE": {
+      "name":        "Fome",
+      "description": "As colheitas falharam em toda a província. Os alimentos têm preço elevado.",
+      "effect":      "Grão +100% · Farinha +100% · Madeira −20%"
+    }
+  },
+
   "senate": {
     "title":         "O Senado",
     "subtitle":      "Os 50 cidadãos mais ricos classificados por patrimônio líquido. Riqueza é poder.",

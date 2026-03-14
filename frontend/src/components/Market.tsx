@@ -39,12 +39,20 @@ import ResourceIcon        from './ResourceIcon';
 
 interface NpcPrice {
   resource_id:       string;
-  current_buy_price: number;
+  current_buy_price: number; // Base price stored in npc_prices table
+  effective_price:   number; // Base × current event multiplier (what the player receives)
   updated_at:        string;
+}
+
+/** Shape of the current empire event returned by GET /market/npc/prices */
+interface GameEventInfo {
+  id:          string;                    // e.g., 'WAR_IN_GAUL'
+  multipliers: Record<string, number>;    // e.g., { LIGNUM: 1.5, ... }
 }
 
 interface NpcPricesApiResponse {
   prices: NpcPrice[];
+  event:  GameEventInfo; // Module 2: active empire event
 }
 
 interface Listing {
@@ -109,6 +117,11 @@ const Market: React.FC = () => {
   // ---- NPC PRICES STATE ----
   // Fetched from GET /market/npc/prices. Replaces hardcoded NPC_DISPLAY_PRICES.
   const [npcPrices, setNpcPrices] = useState<NpcPrice[]>([]);
+
+  // ---- CURRENT EVENT STATE (Module 2) ----
+  // Parsed from the /prices response (no separate API call needed).
+  // null while loading — the banner is not rendered until data arrives.
+  const [currentEvent, setCurrentEvent] = useState<GameEventInfo | null>(null);
 
   // ---- INVENTORY STATE ----
   // We fetch inventory to show the player their current balances,
@@ -194,6 +207,9 @@ const Market: React.FC = () => {
     try {
       const data = await apiRequest<NpcPricesApiResponse>('/market/npc/prices');
       setNpcPrices(data.prices);
+      // Module 2: parse the current empire event from the prices response.
+      // No separate API call needed — the event is bundled into /prices.
+      setCurrentEvent(data.event ?? null);
     } catch {
       // Silently degrade — the sell form still works; server validates on submit.
     }
@@ -418,8 +434,11 @@ const Market: React.FC = () => {
    * Returns 0 if prices haven't loaded yet (the payout preview shows 0,
    * which is fine — the server always uses the authoritative live price).
    */
+  // Returns the event-adjusted effective price for the payout preview.
+  // Uses effective_price (base × event multiplier) so the displayed preview
+  // exactly matches what the server will pay on POST /sell.
   const getNpcPrice = (resourceId: string): number =>
-    npcPrices.find((p) => p.resource_id === resourceId)?.current_buy_price ?? 0;
+    npcPrices.find((p) => p.resource_id === resourceId)?.effective_price ?? 0;
 
   /**
    * Computes the quality multiplier for the NPC payout preview.
@@ -450,8 +469,40 @@ const Market: React.FC = () => {
   // RENDER
   // ================================================================
 
+  // Per-event banner styles. Full class strings kept intact so Tailwind's
+  // JIT scanner can detect them without dynamic string concatenation.
+  const EVENT_STYLES: Record<string, { bg: string; border: string; accent: string; tag: string; icon: string }> = {
+    PAX_ROMANA:  { bg: 'bg-roman-gold/10', border: 'border-roman-gold/30', accent: 'text-roman-gold',  tag: 'bg-roman-gold/10 border-roman-gold/30 text-roman-gold',  icon: '🕊️' },
+    WAR_IN_GAUL: { bg: 'bg-red-50',        border: 'border-roman-red/40',  accent: 'text-roman-red',   tag: 'bg-red-50 border-roman-red/40 text-roman-red',            icon: '⚔️' },
+    FAMINE:      { bg: 'bg-amber-50',      border: 'border-amber-400',     accent: 'text-amber-700',   tag: 'bg-amber-50 border-amber-400 text-amber-700',             icon: '🌾' },
+  };
+
   return (
     <div className="flex flex-col gap-8">
+
+      {/* ---- EMPIRE EVENT BANNER (Module 2) ----
+       * Market.tsx shows its own banner; Dashboard suppresses the outer
+       * banner while activeView === 'market' to avoid showing it twice. */}
+      {currentEvent && (() => {
+        const s = EVENT_STYLES[currentEvent.id];
+        if (!s) return null;
+        return (
+          <div className={`px-4 py-3 rounded-xl border ${s.bg} ${s.border} flex items-center gap-3 flex-wrap`}>
+            <span className="text-xl shrink-0" aria-hidden="true">{s.icon}</span>
+            <div className="flex-1 min-w-0">
+              <span className={`font-bold text-sm uppercase tracking-wider ${s.accent}`}>
+                {t(`events.${currentEvent.id}.name`)}
+              </span>
+              <span className="text-roman-stone text-sm ml-2">
+                — {t(`events.${currentEvent.id}.description`)}
+              </span>
+            </div>
+            <span className={`text-xs font-mono px-2 py-0.5 rounded border shrink-0 ${s.tag}`}>
+              {t(`events.${currentEvent.id}.effect`)}
+            </span>
+          </div>
+        );
+      })()}
 
       {/* ---- BALANCE BAR ---- */}
       <div className="p-3 px-5 bg-roman-ivory rounded-xl border border-roman-gold/30 shadow-sm flex items-center gap-4 flex-wrap">
@@ -495,7 +546,7 @@ const Market: React.FC = () => {
          * An empty list means prices are still loading; tiles appear once ready. */}
         {npcPrices.length > 0 && (
           <div className="flex gap-3 mb-5 flex-wrap">
-            {npcPrices.map(({ resource_id, current_buy_price }) => (
+            {npcPrices.map(({ resource_id, effective_price }) => (
               <div
                 key={resource_id}
                 className="px-4 py-1.5 bg-amber-50 border border-roman-gold/30 rounded-md text-sm text-gray-600 flex items-center gap-1.5"
@@ -504,7 +555,8 @@ const Market: React.FC = () => {
                 <strong className="text-roman-dark">
                   {t(`dashboard.resources.${resource_id}`)}
                 </strong>
-                {' → '}{current_buy_price}{' '}
+                {/* Show effective_price (event-adjusted) — this is what the player receives */}
+                {' → '}{effective_price}{' '}
                 <ResourceIcon resourceId="SESTERTIUS" className="w-4 h-4 object-contain" />
                 {t('dashboard.resources.SESTERTIUS')} / {t('market.npc.unitLabel')}
               </div>

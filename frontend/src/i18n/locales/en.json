@@ -207,6 +207,26 @@
     }
   },
 
+  "events": {
+    "_comment": "Module 2 — Empire-wide events that rotate every 24 hours",
+
+    "PAX_ROMANA": {
+      "name":        "Pax Romana",
+      "description": "The Empire is at peace. All trade prices are normal.",
+      "effect":      "Normal prices"
+    },
+    "WAR_IN_GAUL": {
+      "name":        "War in Gaul",
+      "description": "The legions march north. Armies demand timber and grain.",
+      "effect":      "Wood +50% · Grain +50% · Flour +20%"
+    },
+    "FAMINE": {
+      "name":        "Famine",
+      "description": "Crops have failed across the provinces. Food commands a premium.",
+      "effect":      "Grain +100% · Flour +100% · Wood −20%"
+    }
+  },
+
   "senate": {
     "_comment": "Phase 8 — Global Senate Leaderboard",
 

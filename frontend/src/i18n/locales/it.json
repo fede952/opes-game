@@ -201,6 +201,24 @@
     }
   },
 
+  "events": {
+    "PAX_ROMANA": {
+      "name":        "Pax Romana",
+      "description": "L'Impero è in pace. I prezzi di scambio sono normali.",
+      "effect":      "Prezzi normali"
+    },
+    "WAR_IN_GAUL": {
+      "name":        "Guerra in Gallia",
+      "description": "Le legioni marciano a nord. Legname e grano sono richiestissimi.",
+      "effect":      "Legname +50% · Grano +50% · Farina +20%"
+    },
+    "FAMINE": {
+      "name":        "Carestia",
+      "description": "I raccolti sono falliti in tutta la provincia. Il cibo ha un valore altissimo.",
+      "effect":      "Grano +100% · Farina +100% · Legname −20%"
+    }
+  },
+
   "senate": {
     "title":         "Il Senato",
     "subtitle":      "I 50 cittadini più ricchi classificati per patrimonio netto. La ricchezza è potere.",

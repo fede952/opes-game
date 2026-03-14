@@ -51,13 +51,46 @@
  */
 
 import { Router, Request, Response, NextFunction } from 'express';
-import authMiddleware          from '../middleware/authMiddleware';
+import authMiddleware             from '../middleware/authMiddleware';
 import { query, withTransaction } from '../db/connection';
-import { HttpError }          from '../utils/HttpError';
+import { HttpError }              from '../utils/HttpError';
+import { getCurrentEvent, getEffectivePrice } from '../config/gameEvents';
 
 const router = Router();
 
-// All NPC market routes require authentication (JWT in Authorization header).
+// ================================================================
+// ROUTE: GET /api/v1/market/npc/event  (PUBLIC — no auth required)
+// ================================================================
+
+/**
+ * Returns the currently active empire event.
+ *
+ * This endpoint is intentionally placed BEFORE router.use(authMiddleware)
+ * so it is publicly accessible. The current event is cosmetic/informational
+ * global game state — it is not user-specific and carries no sensitive data.
+ *
+ * Dashboard.tsx fetches from this endpoint to display the event banner on
+ * all tabs, without having to re-fetch the full price list.
+ *
+ * SUCCESS: 200 OK
+ * {
+ *   event: {
+ *     id:          "WAR_IN_GAUL",
+ *     multipliers: { "LIGNUM": 1.5, "FRUMENTUM": 1.5, "FARINA": 1.2 }
+ *   }
+ * }
+ */
+router.get(
+  '/event',
+  (_req: Request, res: Response): void => {
+    const event = getCurrentEvent();
+    res.status(200).json({
+      event: { id: event.id, multipliers: event.multipliers },
+    });
+  }
+);
+
+// All remaining NPC market routes require authentication (JWT in Authorization header).
 router.use(authMiddleware);
 
 // ================================================================
@@ -97,7 +130,22 @@ router.get(
          ORDER  BY resource_id ASC`
       );
 
-      res.status(200).json({ prices: result.rows });
+      // Compute the event-adjusted effective price for each resource.
+      // `current_buy_price` is the raw base price stored in the DB (used by
+      // simulateMarketEvents.ts for its ±20% random walk).
+      // `effective_price` is what the player actually receives — base × event
+      // multiplier, floored to an integer, minimum 1 Sestertius.
+      // The frontend displays effective_price and uses it for payout previews.
+      const event = getCurrentEvent();
+      const pricesWithEvent = result.rows.map((row) => ({
+        ...row,
+        effective_price: getEffectivePrice(row.resource_id, row.current_buy_price),
+      }));
+
+      res.status(200).json({
+        prices: pricesWithEvent,
+        event:  { id: event.id, multipliers: event.multipliers },
+      });
 
     } catch (error) {
       next(error);
@@ -238,7 +286,12 @@ router.post(
           );
         }
 
-        const pricePerUnit: number = priceResult.rows[0].current_buy_price;
+        // Apply the current event multiplier to the base price.
+        // This mirrors the `effective_price` field returned by GET /prices,
+        // so the price shown to the player in the UI exactly matches the
+        // payout they receive when they click "Sell to Empire".
+        const basePrice:    number = priceResult.rows[0].current_buy_price;
+        const pricePerUnit: number = getEffectivePrice(normalizedResource, basePrice);
 
         // ---- STEP 2: Calculate quality-adjusted payout ----
         //

@@ -264,6 +264,14 @@ const Dashboard: React.FC = () => {
   /** Per-building-type build success messages. */
   const [buildSuccesses, setBuildSuccesses] = useState<Record<string, string>>({});
 
+  // ---- CURRENT EVENT STATE (Module 2) ----
+  // The active empire event, fetched from GET /market/npc/event on mount.
+  // null while loading — banner is simply not rendered until data arrives.
+  const [currentEvent, setCurrentEvent] = useState<{
+    id:          string;
+    multipliers: Record<string, number>;
+  } | null>(null);
+
   /**
    * Phase 7: Per-building quality selection for Start Production.
    * Maps building_id → selected quality (0, 1, or 2).
@@ -362,11 +370,31 @@ const Dashboard: React.FC = () => {
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Fetch both buildings and inventory when the component mounts.
+  /**
+   * Fetches the current empire event from GET /market/npc/event.
+   *
+   * The event is global game state computed server-side from the UTC day
+   * number — it rotates every 24 hours. We fetch it once on mount and
+   * store it for the banner. Errors are swallowed silently: the banner
+   * is cosmetic and should not break the main game UI if unavailable.
+   */
+  const fetchCurrentEvent = useCallback(async (): Promise<void> => {
+    try {
+      const data = await apiRequest<{
+        event: { id: string; multipliers: Record<string, number> };
+      }>('/market/npc/event');
+      setCurrentEvent(data.event);
+    } catch {
+      // Silently degrade — event banner is informational, not blocking.
+    }
+  }, []);
+
+  // Fetch all data sources when the component mounts.
   useEffect(() => {
     void fetchBuildings();
     void fetchInventory();
-  }, [fetchBuildings, fetchInventory]);
+    void fetchCurrentEvent();
+  }, [fetchBuildings, fetchInventory, fetchCurrentEvent]);
 
   /**
    * Silently re-fetches buildings and inventory without showing loading spinners.
@@ -752,6 +780,38 @@ const Dashboard: React.FC = () => {
       {/* MAIN CONTENT AREA                                                */}
       {/* ================================================================ */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
+
+        {/* ---- EMPIRE EVENT BANNER (Module 2) ----
+         * Shown on all tabs EXCEPT 'market', where Market.tsx renders
+         * its own banner (to avoid showing the same banner twice).
+         * The banner is purely informational: it does not block any action. */}
+        {currentEvent && activeView !== 'market' && (() => {
+          // Per-event Tailwind classes. Defined inline so the full class strings
+          // are present in source (Tailwind's JIT purger scans for complete strings).
+          const STYLES: Record<string, { bg: string; border: string; accent: string; tag: string; icon: string }> = {
+            PAX_ROMANA:  { bg: 'bg-roman-gold/10', border: 'border-roman-gold/30', accent: 'text-roman-gold',  tag: 'bg-roman-gold/10 border-roman-gold/30 text-roman-gold',  icon: '🕊️' },
+            WAR_IN_GAUL: { bg: 'bg-red-50',        border: 'border-roman-red/40',  accent: 'text-roman-red',   tag: 'bg-red-50 border-roman-red/40 text-roman-red',            icon: '⚔️' },
+            FAMINE:      { bg: 'bg-amber-50',      border: 'border-amber-400',     accent: 'text-amber-700',   tag: 'bg-amber-50 border-amber-400 text-amber-700',             icon: '🌾' },
+          };
+          const s = STYLES[currentEvent.id];
+          if (!s) return null;
+          return (
+            <div className={`mb-6 px-4 py-3 rounded-xl border ${s.bg} ${s.border} flex items-center gap-3 flex-wrap`}>
+              <span className="text-xl shrink-0" aria-hidden="true">{s.icon}</span>
+              <div className="flex-1 min-w-0">
+                <span className={`font-bold text-sm uppercase tracking-wider ${s.accent}`}>
+                  {t(`events.${currentEvent.id}.name`)}
+                </span>
+                <span className="text-roman-stone text-sm ml-2">
+                  — {t(`events.${currentEvent.id}.description`)}
+                </span>
+              </div>
+              <span className={`text-xs font-mono px-2 py-0.5 rounded border shrink-0 ${s.tag}`}>
+                {t(`events.${currentEvent.id}.effect`)}
+              </span>
+            </div>
+          );
+        })()}
 
         {/* ---- PRODUCTION VIEW ---- */}
         {activeView === 'production' && (
