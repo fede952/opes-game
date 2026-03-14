@@ -153,29 +153,22 @@ app.use(helmet());
  * prevents a misconfigured env var from silently blocking all frontend traffic
  * in production. Local dev is the only entry that varies across machines.
  */
-const CORS_WHITELIST: ReadonlySet<string> = new Set([
+const CORS_WHITELIST: string[] = [
   'https://opes.federicosella.com', // Custom domain (Cloudflare Pages)
   'https://opes-game.pages.dev',    // Default Cloudflare Pages domain
   'http://localhost:5173',          // Vite dev server (local development)
-]);
+];
 
 app.use(
   cors({
-    origin: (incomingOrigin, callback) => {
-      // Allow requests with no Origin header (e.g., Postman, curl, server-to-server).
-      // These are not browser cross-origin requests so CORS rules don't apply.
-      if (!incomingOrigin) {
-        callback(null, true);
-        return;
-      }
+    origin: (origin, callback) => {
+      // Log every incoming origin so Render logs show exactly what the browser sends.
+      console.log('[CORS Check] Request from origin:', origin);
 
-      if (CORS_WHITELIST.has(incomingOrigin)) {
-        // Log every allowed cross-origin request so we can confirm CORS is working
-        // in the Render logs after a deployment, without exposing a debug endpoint.
-        console.log(`[CORS] Allowed origin: ${incomingOrigin}`);
+      if (CORS_WHITELIST.includes(origin ?? '') || !origin) {
         callback(null, true);
       } else {
-        callback(new Error(`CORS: Origin '${incomingOrigin}' is not permitted.`));
+        callback(new Error(`CORS: Origin '${origin}' is not permitted.`));
       }
     },
 
