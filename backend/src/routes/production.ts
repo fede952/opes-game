@@ -140,17 +140,22 @@ router.post(
 
       const result = await withTransaction(async (client) => {
 
-        // ---- STEP 1: Lock the building row ----
+        // ---- STEP 1: Lock the building row and check for an active job ----
+        //
+        // user_buildings has no status column — IDLE/PRODUCING is derived from
+        // whether a production_jobs row exists for this building.
         const buildingResult = await client.query<{
-          id:            string;
-          building_type: string;
-          level:         number;
-          status:        string;
+          id:              string;
+          building_type:   string;
+          level:           number;
+          active_job_id:   string | null;
         }>(
-          `SELECT id, building_type, level, status
-           FROM   user_buildings
-           WHERE  id = $1 AND user_id = $2
-           FOR UPDATE`,
+          `SELECT ub.id, ub.building_type, ub.level,
+                  pj.id AS active_job_id
+           FROM   user_buildings ub
+           LEFT JOIN production_jobs pj ON pj.user_building_id = ub.id
+           WHERE  ub.id = $1 AND ub.user_id = $2
+           FOR UPDATE OF ub`,
           [building_id.trim(), userId]
         );
 
@@ -161,7 +166,7 @@ router.post(
         const building = buildingResult.rows[0];
 
         // ---- STEP 2: Validate IDLE status ----
-        if (building.status !== 'IDLE') {
+        if (building.active_job_id !== null) {
           throw new HttpError(
             409,
             'Building is already producing. Collect the current job first.'
@@ -298,31 +303,22 @@ router.post(
         const durationSeconds: number = config.duration_seconds;
 
         const jobResult = await client.query<{
-          id:             string;
-          resource_id:    string;
-          target_quality: number;
-          start_time:     Date;
-          end_time:       Date;
-          yield_amount:   number;
+          id:            string;
+          resource_type: string;
+          quality:       number;
+          start_time:    Date;
+          end_time:      Date;
         }>(
           `INSERT INTO production_jobs
-                (user_building_id, resource_id, target_quality, end_time, yield_amount)
-           VALUES ($1, $2, $3, NOW() + ($4::INTEGER * INTERVAL '1 second'), $5)
-           RETURNING id, resource_id, target_quality, start_time, end_time, yield_amount`,
-          [building.id, resourceId, parsedQuality, durationSeconds, yieldAmount]
+                (user_building_id, resource_type, quality, end_time)
+           VALUES ($1, $2, $3, NOW() + ($4::INTEGER * INTERVAL '1 second'))
+           RETURNING id, resource_type, quality, start_time, end_time`,
+          [building.id, resourceId, parsedQuality, durationSeconds]
         );
 
         const job = jobResult.rows[0];
 
-        // ---- STEP 9: Update building status to PRODUCING ----
-        await client.query(
-          `UPDATE user_buildings
-           SET    status = 'PRODUCING'
-           WHERE  id = $1`,
-          [building.id]
-        );
-
-        return { building, job };
+        return { building, job, yieldAmount };
       });
 
       const durationSeconds = Math.ceil(
@@ -335,7 +331,7 @@ router.post(
           building_type: result.building.building_type,
           level:         result.building.level,
           status:        'PRODUCING',
-          job:           result.job,
+          job:           { ...result.job, yield_amount: result.yieldAmount },
         },
       });
 
@@ -415,17 +411,19 @@ router.post(
 
         // ---- STEP 1: Lock the building and fetch the job ----
         const lockResult = await client.query<{
-          job_id:         string;
-          resource_id:    string;
-          target_quality: number;
-          end_time:       Date;
-          yield_amount:   number;
+          job_id:        string;
+          resource_type: string;
+          quality:       number;
+          end_time:      Date;
+          level:         number;
+          building_type: string;
         }>(
           `SELECT  pj.id             AS job_id,
-                   pj.resource_id,
-                   pj.target_quality,
+                   pj.resource_type,
+                   pj.quality,
                    pj.end_time,
-                   pj.yield_amount
+                   ub.level,
+                   ub.building_type
            FROM    user_buildings ub
            JOIN    production_jobs pj ON pj.user_building_id = ub.id
            WHERE   ub.id = $1 AND ub.user_id = $2
@@ -437,8 +435,13 @@ router.post(
           throw new HttpError(404, 'Building not found or no active production job.');
         }
 
-        const { job_id, resource_id, target_quality, end_time, yield_amount } =
+        const { job_id, resource_type, quality, end_time, level, building_type } =
           lockResult.rows[0];
+
+        // Compute yield from building config and current level (yield_amount is not stored in DB).
+        const collectConfig = BUILDING_CONFIGS[building_type];
+        const yield_amount: number = collectConfig ? collectConfig.base_yield * level : 0;
+        const resource_id = resource_type;
 
         // ---- STEP 2: Verify production is complete ----
         if (new Date() < end_time) {
@@ -489,7 +492,7 @@ router.post(
            ON CONFLICT (user_id, resource_id, quality) DO UPDATE
              SET amount = inventories.amount + EXCLUDED.amount
            RETURNING resource_id, quality, amount`,
-          [userId, resource_id, target_quality, yield_amount]
+          [userId, resource_id, quality, yield_amount]
         );
 
         // ---- STEP 5: Delete the completed production job ----
@@ -498,15 +501,9 @@ router.post(
           [job_id]
         );
 
-        // ---- STEP 6: Reset the building to IDLE ----
-        await client.query(
-          `UPDATE user_buildings SET status = 'IDLE' WHERE id = $1`,
-          [building_id.trim()]
-        );
-
         return {
           resource_id,
-          quality:              target_quality,
+          quality,
           amount_collected:     yield_amount,
           new_inventory_amount: inventoryResult.rows[0]?.amount ?? yield_amount,
         };

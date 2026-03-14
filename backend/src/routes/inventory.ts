@@ -53,10 +53,6 @@ router.get(
       // authMiddleware would have returned 401 and never called next().
       const userId = req.userId!;
 
-      // Phase 7: include quality in the response.
-      // A player may have multiple rows per resource_id (one per quality tier).
-      // The client sums by resource_id for totals, and uses (resource_id, quality)
-      // pairs for quality-specific operations (sell at Q1, list Q2, etc.).
       const result = await query<{ resource_id: string; quality: number; amount: number }>(
         `SELECT resource_id, quality, amount
          FROM   inventories

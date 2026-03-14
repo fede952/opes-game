@@ -90,11 +90,8 @@ const BCRYPT_COST_FACTOR = 12;
  * FRUMENTUM  — Grain (gathered via FUNDUS_FRUMENTI)
  */
 const STARTING_RESOURCES = ['SESTERTIUS', 'LIGNUM', 'FRUMENTUM', 'FARINA', 'RESEARCH'] as const;
-// FARINA added in Phase 6. RESEARCH added in Phase 7.
 // New players receive Q0 rows for all starting resources so that any future
 // production crediting these resources never encounters a missing-row error.
-// New players receive it at registration so any future PISTRINUM production
-// can credit their inventory without a missing-row error.
 
 /**
  * Buildings every new player starts with.

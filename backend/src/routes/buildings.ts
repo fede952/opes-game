@@ -81,13 +81,11 @@ interface BuildingRow {
   id:            string;
   building_type: string;
   level:         number;
-  status:        'IDLE' | 'PRODUCING';
   job_id:        string | null;
-  resource_id:   string | null;
-  target_quality: number | null;  // Phase 7: quality of the output being produced
+  resource_type: string | null;
+  quality:       number | null;
   start_time:    Date   | null;
   end_time:      Date   | null;
-  yield_amount:  number | null;
 }
 
 // ================================================================
@@ -110,18 +108,16 @@ router.get(
         `SELECT  ub.id,
                  ub.building_type,
                  ub.level,
-                 ub.status,
                  pj.id             AS job_id,
-                 pj.resource_id,
-                 pj.target_quality,
+                 pj.resource_type,
+                 pj.quality,
                  pj.start_time,
-                 pj.end_time,
-                 pj.yield_amount
+                 pj.end_time
          FROM    user_buildings ub
          LEFT JOIN production_jobs pj
                 ON pj.user_building_id = ub.id
          WHERE   ub.user_id = $1
-         ORDER   BY ub.created_at ASC`,
+         ORDER   BY ub.id ASC`,
         [userId]
       );
 
@@ -129,15 +125,14 @@ router.get(
         id:            row.id,
         building_type: row.building_type,
         level:         row.level,
-        status:        row.status,
+        status:        row.job_id ? 'PRODUCING' : 'IDLE',
         job: row.job_id
           ? {
-              id:             row.job_id,
-              resource_id:    row.resource_id,
-              target_quality: row.target_quality,
-              start_time:     row.start_time,
-              end_time:       row.end_time,
-              yield_amount:   row.yield_amount,
+              id:            row.job_id,
+              resource_type: row.resource_type,
+              quality:       row.quality,
+              start_time:    row.start_time,
+              end_time:      row.end_time,
             }
           : null,
       }));
@@ -183,9 +178,6 @@ router.post(
       const upgradeResult = await withTransaction(async (client) => {
 
         // ---- STEP 1: Lock the player's SESTERTIUS row at quality = 0 ----
-        //
-        // Phase 7: SESTERTIUS is always Q0. The 3-column PK requires us to
-        // specify quality = 0 in the WHERE clause for an exact row lock.
         const sestertiumRow = await client.query<{ amount: number }>(
           `SELECT amount
            FROM   inventories
@@ -201,9 +193,8 @@ router.post(
           id:            string;
           building_type: string;
           level:         number;
-          status:        string;
         }>(
-          `SELECT id, building_type, level, status
+          `SELECT id, building_type, level
            FROM   user_buildings
            WHERE  id = $1 AND user_id = $2
            FOR UPDATE`,
