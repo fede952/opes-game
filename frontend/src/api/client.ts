@@ -40,8 +40,24 @@
  * Migrate to httpOnly cookies as the security requirements grow.
  */
 
-/** Base path for all API requests. Vite proxies this to http://localhost:3001 in dev. */
-const API_BASE_URL = '/api/v1';
+/**
+ * Base URL for all API requests.
+ *
+ * In production (Cloudflare Pages), set the VITE_API_URL environment variable
+ * in the Cloudflare dashboard to the full Render backend URL, e.g.:
+ *   https://opes-backend-4jh4.onrender.com/api/v1
+ *
+ * Vite bakes this value into the bundle at build time via import.meta.env.
+ * If the variable is missing at build time, we fall back to localhost for local
+ * development — the Vite dev server proxies /api/v1 to http://localhost:3001.
+ *
+ * IMPORTANT: Never fall back to a relative path like '/api/v1' in production,
+ * because that would resolve to the Cloudflare Pages origin instead of the
+ * Render backend, causing all API calls to silently fail.
+ */
+const API_BASE_URL: string =
+  (import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/$/, '') ??
+  'http://localhost:3001/api/v1';
 
 /** localStorage key for the JWT. Namespaced to avoid conflicts with other apps. */
 const TOKEN_KEY = 'opes_auth_token';
