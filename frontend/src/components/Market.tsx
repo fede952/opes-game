@@ -32,6 +32,10 @@ import { useTranslation }  from 'react-i18next';
 import { useAuth }         from '../context/AuthContext';
 import { apiRequest }      from '../api/client';
 import ResourceIcon        from './ResourceIcon';
+import {
+  AreaChart, Area, XAxis, YAxis, CartesianGrid,
+  Tooltip, ReferenceLine, ResponsiveContainer,
+} from 'recharts';
 
 // ================================================================
 // TYPES
@@ -469,6 +473,19 @@ const Market: React.FC = () => {
   // RENDER
   // ================================================================
 
+  // Mock 7-day FRUMENTUM price trend used in the P2P chart.
+  // Each point represents the average price per unit sold that day.
+  // Replace with real API data once we have a trade-history endpoint.
+  const FRUMENTUM_TREND = [
+    { day: 'Day -6', price: 42 },
+    { day: 'Day -5', price: 45 },
+    { day: 'Day -4', price: 40 },
+    { day: 'Day -3', price: 55 },
+    { day: 'Day -2', price: 62 },
+    { day: 'Day -1', price: 58 },
+    { day: 'Today',  price: 67 },
+  ];
+
   // Per-event banner styles. Full class strings kept intact so Tailwind's
   // JIT scanner can detect them without dynamic string concatenation.
   const EVENT_STYLES: Record<string, { bg: string; border: string; accent: string; tag: string; icon: string }> = {
@@ -675,6 +692,62 @@ const Market: React.FC = () => {
       {/* ================================================================ */}
       <section>
         <SectionHeader title={t('market.p2p.title')} subtitle={t('market.p2p.subtitle')} />
+
+        {/* ---- FRUMENTUM PRICE TREND CHART ---- */}
+        {/* 7-day area chart using mocked data. When a trade-history API exists,
+         * replace FRUMENTUM_TREND with a fetched dataset. */}
+        <div className="p-4 bg-roman-ivory rounded-xl shadow-sm border border-roman-gold/20 mb-6">
+          <div className="flex items-center justify-between mb-3">
+            <h4 className="m-0 text-roman-dark text-sm font-bold uppercase tracking-wider">
+              Frumentum — 7-Day Price Trend
+            </h4>
+            <span className="text-xs text-roman-stone border border-roman-gold/30 rounded px-2 py-0.5">
+              avg price / unit
+            </span>
+          </div>
+          <ResponsiveContainer width="100%" height={160}>
+            <AreaChart data={FRUMENTUM_TREND} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
+              <defs>
+                <linearGradient id="frumentumGradient" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%"  stopColor="#D4AF37" stopOpacity={0.35} />
+                  <stop offset="95%" stopColor="#D4AF37" stopOpacity={0}    />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke="#D4AF3722" />
+              <XAxis
+                dataKey="day"
+                tick={{ fontSize: 10, fill: '#9A9588' }}
+                axisLine={{ stroke: '#D4AF3740' }}
+                tickLine={false}
+              />
+              <YAxis
+                tick={{ fontSize: 10, fill: '#9A9588' }}
+                axisLine={false}
+                tickLine={false}
+                domain={['auto', 'auto']}
+              />
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: '#FDFCF7',
+                  border: '1px solid #D4AF3760',
+                  borderRadius: 8,
+                  fontSize: 12,
+                }}
+                formatter={(value: number) => [`${value} ⚙`, 'Price']}
+              />
+              <ReferenceLine y={FRUMENTUM_TREND[0].price} stroke="#D4AF3755" strokeDasharray="4 4" />
+              <Area
+                type="monotone"
+                dataKey="price"
+                stroke="#D4AF37"
+                strokeWidth={2}
+                fill="url(#frumentumGradient)"
+                dot={{ r: 3, fill: '#D4AF37', strokeWidth: 0 }}
+                activeDot={{ r: 5, fill: '#D4AF37' }}
+              />
+            </AreaChart>
+          </ResponsiveContainer>
+        </div>
 
         {/* ---- CREATE LISTING FORM ---- */}
         <div className="p-4 bg-roman-ivory rounded-xl shadow-sm border border-roman-gold/20 mb-6">

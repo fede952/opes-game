@@ -14,7 +14,9 @@
       "Bash(awk 'NR>=624 && NR<=1218' /c/Users/fedes/dev/sim/frontend/src/components/Dashboard.tsx | grep -o '<div\\\\|</div>' | sort | uniq -c)",
       "Bash(awk 'NR>=730 && NR<=1100' /c/Users/fedes/dev/sim/frontend/src/components/Dashboard.tsx | grep -n '<div\\\\|</div>' | head -80)",
       "Bash(find /c/Users/fedes/dev/sim/backend -name \"*.sql\" -o -name \"*migration*\" -o -name \"*schema*\" 2>/dev/null | head -20)",
-      "Bash(grep -h \"CREATE TABLE\" /c/Users/fedes/dev/sim/backend/src/db/*.sql | sort -u)"
+      "Bash(grep -h \"CREATE TABLE\" /c/Users/fedes/dev/sim/backend/src/db/*.sql | sort -u)",
+      "Bash(cd \"C:\\\\Users\\\\fedes\\\\dev\\\\sim\\\\frontend\" && node -e \"require\\('recharts'\\); console.log\\('recharts OK', require\\('./node_modules/recharts/package.json'\\).version\\)\")",
+      "Bash(ls /c/Users/fedes/dev/sim/frontend/node_modules/recharts/package.json && grep '\"version\"' /c/Users/fedes/dev/sim/frontend/node_modules/recharts/package.json)"
     ]
   }
 }

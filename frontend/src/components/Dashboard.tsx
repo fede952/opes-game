@@ -955,7 +955,10 @@ const Dashboard: React.FC = () => {
                           {/* Row 2: info (left) + action buttons (right) */}
                           <div className="flex justify-between items-start gap-3">
 
-                            {/* Left: status / production info */}
+                            {/* Left: status / production info.
+                             * `tick` is read indirectly here: getRemainingSeconds() calls Date.now(),
+                             * so the per-second re-render triggered by the tick interval keeps
+                             * both the progress bar and the countdown accurate without extra state. */}
                             <div className="text-sm text-gray-500 flex-1">
                               {isPassive ? (
                                 <div>
@@ -1094,6 +1097,28 @@ const Dashboard: React.FC = () => {
                               )}
                             </div>
                           </div>
+
+                          {/* Progress bar — shown only while producing and not yet ready */}
+                          {isProducing && building.job && !isReady && (() => {
+                            const totalMs   = new Date(building.job.end_time).getTime() - new Date(building.job.start_time).getTime();
+                            const elapsedMs = Math.min(totalMs, Date.now() - new Date(building.job.start_time).getTime());
+                            const pct       = totalMs > 0 ? Math.round((elapsedMs / totalMs) * 100) : 0;
+                            return (
+                              <div className="mt-3 pt-3 border-t border-roman-gold/10">
+                                <div className="flex justify-between items-center mb-1.5">
+                                  <span className="text-xs text-roman-stone">{pct}%</span>
+                                  <span className="text-xs text-roman-stone">{t('buildings.secondsLeft', { seconds: remaining })}</span>
+                                </div>
+                                <div className="w-full h-2 bg-roman-gold/10 rounded-full overflow-hidden">
+                                  <div
+                                    className="h-full bg-roman-gold rounded-full transition-all duration-1000 ease-linear"
+                                    style={{ width: `${pct}%` }}
+                                  />
+                                </div>
+                              </div>
+                            );
+                          })()}
+
                         </div>
                       </div>
                     );
