@@ -3,198 +3,166 @@
  * @description The root React component of the Opes application.
  *
  * ================================================================
- * ARCHITECTURE: Provider Pattern + Conditional Rendering
+ * ARCHITECTURE
  * ================================================================
  *
- * This file is responsible for two things:
+ *   App          → renders <AuthProvider> (sets up context)
+ *   AppContent   → rendered inside <AuthProvider>, reads auth state,
+ *                  manages the PWA install prompt, and decides whether
+ *                  to show <AuthForm> or <Dashboard>.
  *
- *   1. PROVIDING GLOBAL CONTEXT
- *      <AuthProvider> wraps the entire app so every component in the tree
- *      can access authentication state via the useAuth() hook.
- *
- *   2. TOP-LEVEL ROUTING (authentication gate)
- *      If the player is authenticated (isAuthenticated === true), show Dashboard.
- *      If not, show AuthForm (Login / Register screen).
- *
- * ================================================================
- * MODULE 5: PWA INSTALL PROMPT (Task 3)
- * ================================================================
- *
- * Browsers fire a `beforeinstallprompt` event when the app meets the PWA
- * installability criteria (HTTPS, service worker, valid manifest).
- *
- * We intercept this event to:
- *   1. Prevent the browser's default mini-infobar (which is hard to style).
- *   2. Show our own Roman-themed install banner at the bottom of the screen.
- *   3. When the player clicks "Install", call deferredPrompt.prompt() to
- *      trigger the native install dialog.
- *   4. When the player clicks "Dismiss", hide the banner for the session.
- *      (We do NOT persist the dismissal to localStorage — the browser will
- *      stop firing the event once the app is installed, so the banner
- *      disappears naturally after installation.)
- *
- * WHY useRef INSTEAD OF useState FOR deferredPrompt?
- *   The event object is large and mutable. Storing it in useState would
- *   trigger a re-render every time it changes, and React would try to
- *   diff an event object (which it can't meaningfully do). useRef stores
- *   the value without causing re-renders.
+ * WHY AppContent IS SEPARATE:
+ *   useAuth() must be called inside a child of <AuthProvider>, not in
+ *   the same component that renders the Provider (React processes the
+ *   tree top-down, so the context isn't ready yet at that level).
  *
  * ================================================================
- * WHY AppContent IS A SEPARATE COMPONENT
+ * PWA INSTALL PROMPT STRATEGY
  * ================================================================
  *
- * The useAuth() hook READS from AuthContext. It must be called INSIDE a
- * component that is a CHILD of <AuthProvider>. You cannot call useContext
- * in the same component that renders the Provider — React processes the
- * tree top-down, so the Provider hasn't finished mounting when the same
- * component tries to read from it.
+ * Chrome/Edge on Android (and desktop) fire `beforeinstallprompt`
+ * when the app meets the installability criteria. Safari/iOS does NOT
+ * fire this event — iOS users install via the share-sheet "Add to
+ * Home Screen" button, which we cannot automate.
  *
- * Solution: Split into two components:
- *   App         → renders <AuthProvider> (sets up the context)
- *   AppContent  → rendered INSIDE <AuthProvider>, calls useAuth() safely
+ * Our strategy:
+ *
+ *   1. LOGIN PAGE
+ *      A prominent gold call-to-action button is shown INSIDE the
+ *      AuthForm card (above the input fields) so a first-time visitor
+ *      on mobile sees it immediately. Prop `canInstall` controls
+ *      whether AuthForm renders this button.
+ *
+ *   2. DASHBOARD
+ *      A full-width gold banner is pinned just above the mobile bottom
+ *      nav bar (bottom-14 on mobile, bottom-0 on desktop). It's
+ *      impossible to miss without being a blocking modal.
+ *
+ *   3. DISMISS PERSISTENCE
+ *      Dismissal is stored in sessionStorage so the banner doesn't
+ *      reappear if the component tree remounts within the same session.
+ *      Once the app is installed, the browser stops firing the event
+ *      entirely, so no permanent storage is needed.
+ *
+ *   4. AFTER INSTALL DIALOG
+ *      Whether the player accepts or dismisses the OS dialog, we clear
+ *      the deferred event and hide our banner — calling .prompt() a
+ *      second time on the same event would throw.
  */
 
 import React, { useEffect, useRef, useState } from 'react';
-import { AuthProvider } from './context/AuthContext';
+import { AuthProvider, useAuth } from './context/AuthContext';
 import AuthForm  from './components/AuthForm';
 import Dashboard from './components/Dashboard';
-import { useAuth } from './context/AuthContext';
 
 // ================================================================
 // TYPES
 // ================================================================
 
 /**
- * The `beforeinstallprompt` event is a non-standard browser event.
- * TypeScript's DOM lib doesn't include it, so we define the shape here.
- * See: https://developer.mozilla.org/en-US/docs/Web/API/BeforeInstallPromptEvent
+ * `beforeinstallprompt` is non-standard and absent from TypeScript's
+ * DOM lib. We declare the minimal shape we actually use.
  */
 interface BeforeInstallPromptEvent extends Event {
-  /** Shows the install dialog. Returns a promise resolving to { outcome: 'accepted' | 'dismissed' } */
   prompt(): Promise<{ outcome: 'accepted' | 'dismissed' }>;
 }
 
 // ================================================================
-// AppContent — Consumes AuthContext, decides what to render
+// AppContent
 // ================================================================
 
-/**
- * The inner shell of the application.
- * This component is always rendered inside <AuthProvider>, so useAuth() is safe.
- *
- * Also manages the PWA install banner — placed here (rather than inside
- * Dashboard) so the banner is visible on both the AuthForm and the Dashboard.
- */
 const AppContent: React.FC = () => {
   const { isAuthenticated } = useAuth();
 
-  // ---- PWA INSTALL PROMPT STATE ----
-
-  /**
-   * Whether the install banner is currently visible.
-   * Set to true when `beforeinstallprompt` fires; false when dismissed or installed.
-   */
-  const [showInstallBanner, setShowInstallBanner] = useState(false);
-
-  /**
-   * Stores the deferred browser install event so we can call .prompt() later.
-   * useRef is used (not useState) because we don't need a re-render when the
-   * event is captured — only the banner visibility state triggers a render.
-   */
+  const [showBanner,     setShowBanner]     = useState(false);
   const deferredPrompt = useRef<BeforeInstallPromptEvent | null>(null);
 
+  // ---- Capture the browser's deferred install event ----
   useEffect(() => {
+    // Don't re-show if the player already dismissed this session.
+    if (sessionStorage.getItem('pwa-dismissed') === '1') return;
+
     const handler = (e: Event) => {
-      // Prevent the browser's built-in mini-infobar so ours shows instead.
+      // Suppress the browser's own mini-infobar so our UI is the only prompt.
       e.preventDefault();
       deferredPrompt.current = e as BeforeInstallPromptEvent;
-      setShowInstallBanner(true);
+      setShowBanner(true);
     };
 
     window.addEventListener('beforeinstallprompt', handler);
-
-    // Clean up on unmount (though AppContent never unmounts in practice).
     return () => window.removeEventListener('beforeinstallprompt', handler);
   }, []);
 
+  // ---- Trigger the native OS install dialog ----
   const handleInstall = async (): Promise<void> => {
     if (!deferredPrompt.current) return;
-    const result = await deferredPrompt.current.prompt();
-    // Whether accepted or dismissed by the OS dialog, clear our state.
-    // The browser will not fire `beforeinstallprompt` again after this.
+    // prompt() can only be called once per event — always clean up after.
+    await deferredPrompt.current.prompt();
     deferredPrompt.current = null;
-    if (result.outcome === 'accepted') {
-      setShowInstallBanner(false);
-    }
+    setShowBanner(false);
   };
 
+  // ---- Dismiss without installing ----
   const handleDismiss = (): void => {
-    setShowInstallBanner(false);
-    // We intentionally do NOT clear deferredPrompt — the player could change
-    // their mind and we have no other way to re-trigger the install dialog.
+    sessionStorage.setItem('pwa-dismissed', '1');
+    setShowBanner(false);
   };
 
   return (
     <>
-      {/* ---- Main app content ---- */}
-      {isAuthenticated ? <Dashboard /> : <AuthForm />}
+      {/* ---- Main content ---- */}
+      {isAuthenticated
+        ? <Dashboard />
+        : (
+          <AuthForm
+            canInstall={showBanner}
+            onInstall={() => void handleInstall()}
+          />
+        )
+      }
 
       {/* ================================================================ */}
-      {/* PWA INSTALL BANNER (Module 5, Task 3)                           */}
+      {/* DASHBOARD INSTALL BANNER                                         */}
       {/* ================================================================ */}
       {/*
-       * Only shown when:
-       *   - The browser fired `beforeinstallprompt` (Chrome/Edge on Android
-       *     and desktop; NOT shown on iOS Safari, which has its own mechanism).
-       *   - The player has not dismissed it this session.
-       *   - The app is not already installed (once installed, the browser
-       *     stops firing the event).
+       * Shown when the player is logged in AND the browser has offered
+       * an install event. Pinned above the mobile bottom nav bar.
        *
-       * Positioned as a fixed bottom-right card so it doesn't block content.
-       * On mobile, it sits just above the bottom navigation bar (mb-16).
+       * Layout:
+       *   bottom-14   → clears the 56px mobile bottom nav (md:bottom-0 on desktop)
+       *   z-40        → above content (z-0) and bottom nav (z-30), below the
+       *                 install card if somehow both show at once (z-50)
+       *
+       * The gold background makes it unmissable without being a modal.
        */}
-      {showInstallBanner && (
+      {showBanner && isAuthenticated && (
         <div
           role="banner"
-          className="fixed bottom-4 right-4 z-50 max-w-xs w-[calc(100vw-2rem)] bg-roman-dark text-roman-marble rounded-xl shadow-2xl border border-roman-gold/40 p-4 flex flex-col gap-3 md:bottom-6 md:right-6"
+          className="fixed bottom-14 md:bottom-0 left-0 right-0 z-40 bg-roman-gold shadow-[0_-2px_20px_rgba(212,175,55,0.5)]"
         >
-          {/* Header */}
-          <div className="flex items-start justify-between gap-2">
-            <div className="flex items-center gap-2">
-              <span className="text-xl" aria-hidden="true">🏛</span>
-              <span className="font-bold text-sm text-roman-gold uppercase tracking-wider">
-                Install Opes
-              </span>
+          <div className="max-w-7xl mx-auto px-4 py-2.5 flex items-center gap-3">
+            <span className="text-xl shrink-0" aria-hidden="true">📲</span>
+
+            <p className="flex-1 text-roman-dark text-sm font-bold leading-tight m-0">
+              Play Opes like a native App!
+              <span className="hidden sm:inline font-normal"> — Install for fullscreen play, no browser bar.</span>
+            </p>
+
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                onClick={() => void handleInstall()}
+                className="px-4 py-1.5 bg-roman-dark text-roman-gold rounded-lg text-xs font-bold uppercase tracking-wider cursor-pointer hover:opacity-90 transition-opacity border-none whitespace-nowrap"
+              >
+                Install App
+              </button>
+              <button
+                onClick={handleDismiss}
+                aria-label="Dismiss install prompt"
+                className="p-1.5 text-roman-dark/60 hover:text-roman-dark transition-colors cursor-pointer bg-transparent border-none text-lg leading-none"
+              >
+                ×
+              </button>
             </div>
-            <button
-              onClick={handleDismiss}
-              aria-label="Dismiss install prompt"
-              className="text-roman-marble/40 hover:text-roman-marble/80 transition-colors text-lg leading-none cursor-pointer bg-transparent border-none p-0"
-            >
-              ×
-            </button>
-          </div>
-
-          {/* Body */}
-          <p className="text-xs text-roman-marble/70 leading-relaxed">
-            For the best experience, install Opes as an App on your device.
-            Play in fullscreen — no browser bar.
-          </p>
-
-          {/* Actions */}
-          <div className="flex gap-2">
-            <button
-              onClick={() => void handleInstall()}
-              className="flex-1 px-3 py-2 bg-roman-gold text-roman-dark rounded-lg text-xs font-bold uppercase tracking-wider cursor-pointer hover:opacity-90 transition-opacity border-none"
-            >
-              Install App
-            </button>
-            <button
-              onClick={handleDismiss}
-              className="px-3 py-2 text-roman-marble/50 text-xs rounded-lg cursor-pointer hover:text-roman-marble transition-colors bg-transparent border border-roman-marble/20"
-            >
-              Not now
-            </button>
           </div>
         </div>
       )}
@@ -203,22 +171,11 @@ const AppContent: React.FC = () => {
 };
 
 // ================================================================
-// App — Root component, sets up providers and global shell
+// App — Root, sets up providers
 // ================================================================
 
 const App: React.FC = () => (
-  /**
-   * <AuthProvider> must wrap everything that needs authentication state.
-   * It initializes from localStorage on first render, so returning players
-   * are recognized immediately without a round-trip to the server.
-   */
   <AuthProvider>
-    {/*
-      min-h-screen  — fills the full viewport height so the marble
-                       background never leaves a gap at the bottom.
-      font-roman    — Georgia serif defined in tailwind.config.js.
-      bg-roman-marble / text-roman-dark — our custom theme colours.
-    */}
     <div className="min-h-screen font-roman bg-roman-marble text-roman-dark">
       <AppContent />
     </div>

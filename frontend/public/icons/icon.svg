@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192">
+  <!--
+    Opes PWA icon — Roman coin design.
+    Full #2C2A29 background fills the entire square so the maskable
+    version (Android adaptive icons) looks correct when cropped into
+    a circle or squircle. All artwork stays inside the central 80%
+    "safe zone" (roughly 154×154 px, centred at 96,96).
+  -->
+
+  <!-- Background — roman-dark, full bleed -->
+  <rect width="192" height="192" fill="#2C2A29"/>
+
+  <!-- Outer gold ring (coin rim) -->
+  <circle cx="96" cy="96" r="76" fill="#D4AF37"/>
+
+  <!-- Coin face — roman-dark inset -->
+  <circle cx="96" cy="96" r="66" fill="#2C2A29"/>
+
+  <!-- Thin inner rim detail -->
+  <circle cx="96" cy="96" r="60" fill="none" stroke="#D4AF37" stroke-width="1.5"/>
+
+  <!-- "O" lettermark — anchored so it sits centred on the coin face -->
+  <text
+    x="96" y="96"
+    text-anchor="middle"
+    dominant-baseline="central"
+    font-family="Georgia, 'Times New Roman', serif"
+    font-size="72"
+    font-weight="bold"
+    fill="#D4AF37"
+  >O</text>
+
+  <!-- Small "OPES" word-mark below the lettermark -->
+  <text
+    x="96" y="148"
+    text-anchor="middle"
+    font-family="Georgia, serif"
+    font-size="13"
+    font-weight="bold"
+    fill="#D4AF37"
+    letter-spacing="5"
+  >OPES</text>
+</svg>

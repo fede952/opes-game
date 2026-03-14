@@ -42,7 +42,19 @@ interface AuthApiResponse {
 // COMPONENT
 // ================================================================
 
-const AuthForm: React.FC = () => {
+interface AuthFormProps {
+  /**
+   * True when the browser has offered a PWA install event.
+   * When set, a prominent install button is shown above the login form
+   * so first-time mobile visitors see it immediately.
+   * Only fires on Chrome/Edge on Android and desktop — not iOS Safari.
+   */
+  canInstall?: boolean;
+  /** Call this to trigger the native OS install dialog. */
+  onInstall?:  () => void;
+}
+
+const AuthForm: React.FC<AuthFormProps> = ({ canInstall, onInstall }) => {
   const { t }    = useTranslation();
   const { login } = useAuth();
 
@@ -153,6 +165,41 @@ const AuthForm: React.FC = () => {
             {t('common.subtitle')}
           </p>
         </div>
+
+        {/* ---- PWA install call-to-action ---- */}
+        {/*
+         * Only rendered when Chrome/Edge has offered the `beforeinstallprompt`
+         * event (i.e., the app is installable but not yet installed).
+         * Positioned between the game subtitle and the login form so it's the
+         * first interactive element a mobile visitor sees after the branding.
+         *
+         * The ring-offset + shadow give it a "coin" feel consistent with the
+         * Roman theme. `animate-pulse` subtly draws the eye without being
+         * as jarring as a full animation.
+         */}
+        {canInstall && onInstall && (
+          <button
+            type="button"
+            onClick={onInstall}
+            className={[
+              'w-full py-3 px-4 rounded-xl border-2 border-roman-gold',
+              'bg-roman-gold/10 text-roman-dark',
+              'flex items-center justify-center gap-2.5',
+              'cursor-pointer transition-all duration-200',
+              'hover:bg-roman-gold hover:text-white',
+              'shadow-[0_0_16px_rgba(212,175,55,0.4)]',
+              'animate-pulse hover:animate-none',
+            ].join(' ')}
+          >
+            <span className="text-xl" aria-hidden="true">📲</span>
+            <span className="font-bold text-sm leading-tight text-left">
+              Play Opes like a native App!
+              <span className="block font-normal text-xs opacity-70 mt-0.5">
+                Tap here to install — no App Store needed.
+              </span>
+            </span>
+          </button>
+        )}
 
         {/* Form title changes based on mode */}
         <h2 className="text-roman-purple text-xl font-bold m-0">

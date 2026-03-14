@@ -87,6 +87,16 @@ export default defineConfig({
         start_url:        '/',
         icons: [
           {
+            // SVG icon — scales to any size, works on Android Chrome and
+            // modern desktop browsers. "any" means "use at any resolution".
+            src:     '/icons/icon.svg',
+            sizes:   'any',
+            type:    'image/svg+xml',
+          },
+          {
+            // PNG fallbacks — drop icon-192.png and icon-512.png into
+            // public/icons/ before a production build (see README.md).
+            // These are needed for full Android/Samsung browser compatibility.
             src:   '/icons/icon-192.png',
             sizes: '192x192',
             type:  'image/png',
@@ -97,8 +107,8 @@ export default defineConfig({
             type:  'image/png',
           },
           {
-            // "maskable" purpose lets Android use adaptive icons
-            // (the icon is cropped into a circle, square, etc. based on device).
+            // "maskable" purpose lets Android crop the icon into a circle
+            // or squircle — the artwork stays inside the central 80% safe zone.
             src:     '/icons/icon-512.png',
             sizes:   '512x512',
             type:    'image/png',

@@ -36,13 +36,14 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="Opes" />
-    <link rel="apple-touch-icon" href="/icons/icon-192.png" />
+    <!-- SVG favicon — scales perfectly at all sizes (browser tab, bookmarks).
+         The SVG is committed to the repo so this works immediately, no PNG needed. -->
+    <link rel="icon" type="image/svg+xml" href="/icons/icon.svg" />
 
-    <!--
-      Vite will replace this with the actual favicon path from the /public directory.
-      Drop icon-192.png into public/icons/ and update this href to use it.
-    -->
-    <link rel="icon" type="image/png" href="/icons/icon-192.png" />
+    <!-- Apple touch icon — iOS "Add to Home Screen" uses this PNG.
+         Drop icon-192.png into public/icons/ to activate it (see README.md).
+         Until then, iOS will fall back to a screenshot of the page. -->
+    <link rel="apple-touch-icon" href="/icons/icon-192.png" />
 
     <title>Opes — Ancient Economic Simulation</title>
   </head>
