@@ -1,17 +1,4 @@
 {
-  "_comment": "Italian (it) — Italiano. The language of the Roman Empire's descendants — a natural fit for Opes!",
-  "_translators": "Opes Localization Team",
-
-  "common": {
-    "gameTitle": "Opes",
-    "welcome":   "Benvenuto in Opes!",
-    "subtitle":  "Una simulazione economica multiplayer ambientata nell'antica Roma e Grecia.",
-    "loading":   "Caricamento in corso...",
-    "error":     "Si è verificato un errore. Riprova.",
-    "devNote":   "Il sistema i18n è attivo. Usa il selettore per cambiare lingua."
-  },
-
-  {
   "auth": {
     "login": "Accedi",
     "register": "Registrati",
