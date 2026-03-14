@@ -612,9 +612,9 @@ const Market: React.FC = () => {
               onChange={(e) => setNpcQuality(parseInt(e.target.value, 10))}
               className={selectCls}
             >
-              <option value={0}>Q0 (×1.0)</option>
+              <option value={0}>Q0 — Standard (×1.0)</option>
               <option value={1}>Q1 (×1.5)</option>
-              <option value={2}>Q2 (×2.0)</option>
+              <option value={2}>★ Q2 — High Quality (×2.0)</option>
             </select>
           </div>
 
@@ -913,11 +913,17 @@ const Market: React.FC = () => {
                             {t(`dashboard.resources.${listing.resource_id}`)}
                           </span>
                         </td>
-                        {/* Phase 7: quality tier cell — highlight non-Q0 with a badge */}
+                        {/* Phase 7 / Module 4: quality tier cell.
+                         * Q2 (High Quality) gets a gold star badge to signal premium value.
+                         * Q1 gets a plain amber badge. Q0 is shown in muted grey. */}
                         <td className="py-2.5 px-3">
-                          {listing.quality > 0 ? (
+                          {listing.quality === 2 ? (
+                            <span className="text-xs px-1.5 py-0.5 rounded-full bg-roman-gold text-white border border-roman-gold font-semibold">
+                              ★ Q2
+                            </span>
+                          ) : listing.quality === 1 ? (
                             <span className="text-xs px-1.5 py-0.5 rounded-full bg-amber-100 text-roman-gold border border-roman-gold/60">
-                              Q{listing.quality}
+                              Q1
                             </span>
                           ) : (
                             <span className="text-gray-400 text-xs">Q0</span>

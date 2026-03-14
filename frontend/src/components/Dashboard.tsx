@@ -223,6 +223,12 @@ const Dashboard: React.FC = () => {
     FARINA:     0,
     RESEARCH:   0,
   });
+  /**
+   * Raw inventory rows from the API — one entry per (resource_id, quality) pair.
+   * Used for the per-quality breakdown in the inventory grid (Module 4, Task 3).
+   * The summed `inventory` record above is still used for storage bar calculations.
+   */
+  const [inventoryRows,    setInventoryRows]    = useState<InventoryRow[]>([]);
   const [isLoadingInv,     setIsLoadingInv]     = useState<boolean>(true);
   const [inventoryError,   setInventoryError]   = useState<string | null>(null);
 
@@ -355,6 +361,8 @@ const Dashboard: React.FC = () => {
         FARINA:     map['FARINA']     ?? 0,
         RESEARCH:   map['RESEARCH']   ?? 0,
       });
+      // Module 4: store raw rows so the inventory grid can show Q2 amounts separately.
+      setInventoryRows(data.inventory);
 
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
@@ -427,6 +435,7 @@ const Dashboard: React.FC = () => {
         FARINA:     map['FARINA']     ?? 0,
         RESEARCH:   map['RESEARCH']   ?? 0,
       });
+      setInventoryRows(invData.inventory);
     } catch {
       // Silently swallow polling errors — a missed tick is harmless.
     }
@@ -883,6 +892,12 @@ const Dashboard: React.FC = () => {
                  */
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {buildings.map((building) => {
+                    // Module 4: does this player have an Academy at Level 2+?
+                    // Unlocks the High Quality production toggle on every building card.
+                    // Re-derived per card (O(n) on a tiny array) so no separate state needed.
+                    const hasHighQuality = buildings.some(
+                      (b) => b.building_type === 'ACADEMIA' && b.level >= 2
+                    );
                     const isActing    = actionInProgress === building.id;
                     const isUpgrading = upgradingId === building.id;
                     const bldgError   = buildingErrors[building.id];
@@ -1006,10 +1021,9 @@ const Dashboard: React.FC = () => {
                                       ))}
                                     </div>
                                   )}
-                                  {canSelectQuality && selectedQuality > 0 && (
-                                    <div className="mt-0.5 text-purple-700 text-xs">
-                                      + {researchCost} {t('dashboard.resources.RESEARCH')}
-                                      {' '}({t('buildings.qualityCost')})
+                                  {canSelectQuality && selectedQuality === 2 && (
+                                    <div className="mt-0.5 text-roman-gold text-xs font-medium">
+                                      ★ High Quality: +4 {t('dashboard.resources.RESEARCH')} · +50% time · ×2 NPC value
                                     </div>
                                   )}
                                 </>
@@ -1019,24 +1033,37 @@ const Dashboard: React.FC = () => {
                             {/* Right: buttons */}
                             <div className="flex flex-col items-end gap-1.5 shrink-0">
 
-                              {/* Quality dropdown — idle, non-passive, non-RESEARCH buildings only */}
-                              {!isPassive && !isProducing && canSelectQuality && (
-                                <div className="flex items-center gap-1">
-                                  <label className="text-xs text-gray-400">
-                                    {t('buildings.qualityLabel')}:
-                                  </label>
-                                  <select
-                                    value={selectedQuality}
-                                    onChange={(e) => setQualitySelections((prev) => ({
-                                      ...prev,
-                                      [building.id]: parseInt(e.target.value, 10),
-                                    }))}
-                                    className="p-0.5 border border-roman-gold/60 rounded text-xs bg-roman-marble cursor-pointer"
+                              {/* Quality toggle — Standard vs High Quality.
+                               * Only shown when:
+                               *   1. The building can produce quality goods (canSelectQuality), and
+                               *   2. The player is idle (not yet producing), and
+                               *   3. The player has an Academy at Level 2+ (hasHighQuality).
+                               * If the player does NOT have ACADEMIA L2, quality is always 0
+                               * and this control is hidden entirely — no dropdown, no toggle. */}
+                              {!isPassive && !isProducing && canSelectQuality && hasHighQuality && (
+                                <div className="flex rounded overflow-hidden border border-roman-gold/40 text-xs">
+                                  <button
+                                    onClick={() => setQualitySelections((prev) => ({ ...prev, [building.id]: 0 }))}
+                                    className={[
+                                      'px-2.5 py-1 transition-colors border-none cursor-pointer',
+                                      selectedQuality === 0
+                                        ? 'bg-roman-gold text-white font-semibold'
+                                        : 'bg-roman-ivory text-roman-stone hover:bg-roman-gold/10',
+                                    ].join(' ')}
                                   >
-                                    <option value={0}>Q0</option>
-                                    <option value={1}>Q1 (-{2} R)</option>
-                                    <option value={2}>Q2 (-{4} R)</option>
-                                  </select>
+                                    Standard
+                                  </button>
+                                  <button
+                                    onClick={() => setQualitySelections((prev) => ({ ...prev, [building.id]: 2 }))}
+                                    className={[
+                                      'px-2.5 py-1 transition-colors border-none cursor-pointer border-l border-roman-gold/40',
+                                      selectedQuality === 2
+                                        ? 'bg-roman-gold text-white font-semibold'
+                                        : 'bg-roman-ivory text-roman-stone hover:bg-roman-gold/10',
+                                    ].join(' ')}
+                                  >
+                                    ★ High Quality
+                                  </button>
                                 </div>
                               )}
 
@@ -1262,22 +1289,37 @@ const Dashboard: React.FC = () => {
                 /*
                  * 5-column resource grid (2 on mobile, 3 on sm, 5 on lg).
                  * Each resource gets an icon, a large number, and a label.
+                 * Module 4: if a player holds any Q2 (High Quality) stock of a physical
+                 * resource, a gold ★ badge shows the Q2 amount separately below the total.
+                 * SESTERTIUS and RESEARCH are quality-neutral so no badge is shown.
                  */
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-                  {ALL_RESOURCES.map((resourceId) => (
-                    <div
-                      key={resourceId}
-                      className="bg-roman-ivory rounded-xl shadow-sm border border-roman-gold/20 p-4 flex flex-col items-center gap-2 text-center"
-                    >
-                      <ResourceIcon resourceId={resourceId} className="w-8 h-8 object-contain" />
-                      <span className="text-2xl font-bold text-roman-gold">
-                        {inventory[resourceId]}
-                      </span>
-                      <span className="text-xs text-roman-stone uppercase tracking-wide">
-                        {t(`dashboard.resources.${resourceId}`)}
-                      </span>
-                    </div>
-                  ))}
+                  {ALL_RESOURCES.map((resourceId) => {
+                    const q2Amount = inventoryRows
+                      .filter((r) => r.resource_id === resourceId && r.quality === 2)
+                      .reduce((sum, r) => sum + r.amount, 0);
+                    const showQ2Badge = q2Amount > 0 && !WEIGHTLESS_RESOURCES.has(resourceId as ResourceId);
+
+                    return (
+                      <div
+                        key={resourceId}
+                        className="bg-roman-ivory rounded-xl shadow-sm border border-roman-gold/20 p-4 flex flex-col items-center gap-2 text-center"
+                      >
+                        <ResourceIcon resourceId={resourceId} className="w-8 h-8 object-contain" />
+                        <span className="text-2xl font-bold text-roman-gold">
+                          {inventory[resourceId]}
+                        </span>
+                        <span className="text-xs text-roman-stone uppercase tracking-wide">
+                          {t(`dashboard.resources.${resourceId}`)}
+                        </span>
+                        {showQ2Badge && (
+                          <span className="text-xs font-semibold text-roman-gold bg-roman-gold/10 border border-roman-gold/40 rounded-full px-2 py-0.5">
+                            ★ {q2Amount} Q2
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </section>

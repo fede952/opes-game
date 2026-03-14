@@ -107,6 +107,7 @@ const RESEARCH_COST_PER_QUALITY = 2;
  *   400 — building_id missing / passive building / unknown type
  *   400 — quality is not 0, 1, or 2
  *   400 — insufficient Sestertius / inputs / RESEARCH
+ *   403 — quality = 2 requested but ACADEMIA is below Level 2 (Module 4)
  *   404 — building not found
  *   409 — building already producing
  */
@@ -210,6 +211,28 @@ router.post(
           );
         }
 
+        // ---- Module 4: Q2 requires ACADEMIA Level 2+ ----
+        //
+        // High Quality production is an endgame mechanic. Only players who have
+        // invested in an Academy (upgraded to at least Level 2) may produce Q2 goods.
+        // The check runs inside the transaction so the academy level cannot change
+        // between validation and job insertion.
+        if (parsedQuality === 2) {
+          const academiaResult = await client.query<{ max_level: number }>(
+            `SELECT COALESCE(MAX(level), 0) AS max_level
+             FROM   user_buildings
+             WHERE  user_id = $1 AND building_type = 'ACADEMIA'`,
+            [userId]
+          );
+          const academiaLevel: number = academiaResult.rows[0]?.max_level ?? 0;
+          if (academiaLevel < 2) {
+            throw new HttpError(
+              403,
+              'High Quality production requires an Academy at Level 2 or higher. Upgrade your Academy first.'
+            );
+          }
+        }
+
         const level: number = building.level;
 
         // ---- STEP 4: Calculate level-scaled costs and yield ----
@@ -306,7 +329,12 @@ router.post(
         //   CASTRA_LIGNATORUM / FUNDUS_FRUMENTI: 900 s (15 min)
         //   PISTRINUM: 3600 s (60 min)
         //   ACADEMIA:  1800 s (30 min)
-        const durationSeconds: number = config.duration_seconds;
+        //
+        // Module 4: Q2 takes 50% longer — artisan refinement is more time-intensive.
+        // This cost balances the 2× NPC payout premium on High Quality goods.
+        const durationSeconds: number = parsedQuality === 2
+          ? Math.round(config.duration_seconds * 1.5)
+          : config.duration_seconds;
 
         const jobResult = await client.query<{
           id:            string;
