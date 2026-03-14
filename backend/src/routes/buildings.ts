@@ -170,7 +170,13 @@ router.post(
       const userId = req.userId!;
       const { user_building_id } = req.body as { user_building_id?: unknown };
 
-      if (typeof user_building_id !== 'string' || user_building_id.trim().length === 0) {
+      // Accept as either a number (integer DB id) or a numeric string.
+      const parsedBuildingId =
+        typeof user_building_id === 'number'
+          ? Math.floor(user_building_id)
+          : parseInt(String(user_building_id), 10);
+
+      if (!Number.isFinite(parsedBuildingId) || parsedBuildingId <= 0) {
         res.status(400).json({ error: 'user_building_id is required.' });
         return;
       }
@@ -198,7 +204,7 @@ router.post(
            FROM   user_buildings
            WHERE  id = $1 AND user_id = $2
            FOR UPDATE`,
-          [user_building_id.trim(), userId]
+          [parsedBuildingId, userId]
         );
 
         if (buildingRow.rowCount === 0) {

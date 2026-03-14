@@ -120,7 +120,13 @@ router.post(
         quality?:     unknown;
       };
 
-      if (typeof building_id !== 'string' || building_id.trim().length === 0) {
+      // Accept building_id as either a number (integer DB id) or a numeric string.
+      const parsedBuildingId =
+        typeof building_id === 'number'
+          ? Math.floor(building_id)
+          : parseInt(String(building_id), 10);
+
+      if (!Number.isFinite(parsedBuildingId) || parsedBuildingId <= 0) {
         res.status(400).json({ error: 'building_id is required.' });
         return;
       }
@@ -156,7 +162,7 @@ router.post(
            LEFT JOIN production_jobs pj ON pj.user_building_id = ub.id
            WHERE  ub.id = $1 AND ub.user_id = $2
            FOR UPDATE OF ub`,
-          [building_id.trim(), userId]
+          [parsedBuildingId, userId]
         );
 
         if (buildingResult.rowCount === 0) {
@@ -402,7 +408,12 @@ router.post(
       const userId          = req.userId!;
       const { building_id } = req.body as { building_id?: unknown };
 
-      if (typeof building_id !== 'string' || building_id.trim().length === 0) {
+      const parsedBuildingId =
+        typeof building_id === 'number'
+          ? Math.floor(building_id)
+          : parseInt(String(building_id), 10);
+
+      if (!Number.isFinite(parsedBuildingId) || parsedBuildingId <= 0) {
         res.status(400).json({ error: 'building_id is required.' });
         return;
       }
@@ -428,7 +439,7 @@ router.post(
            JOIN    production_jobs pj ON pj.user_building_id = ub.id
            WHERE   ub.id = $1 AND ub.user_id = $2
            FOR UPDATE OF ub`,
-          [building_id.trim(), userId]
+          [parsedBuildingId, userId]
         );
 
         if (lockResult.rowCount === 0) {
