@@ -1,5 +1,5 @@
 {
-  "_comment": "Portuguese — Brazil (pt-BR). Used across South America and Portugal. Covers ~260 million speakers.",
+  "_comment": "Português — Brasil (pt-BR). Cobre ~260 milhões de falantes.",
   "_translators": "Opes Localization Team",
 
   "common": {
@@ -38,6 +38,45 @@
     }
   },
 
+  "buildings": {
+    "title":              "Seus Edifícios",
+    "loading":            "Carregando edifícios...",
+    "statusIdle":         "Ocioso",
+    "statusProducing":    "Produzindo",
+    "passive":            "Passivo",
+    "produces":           "Produz",
+    "startButton":        "Iniciar Produção",
+    "starting":           "Iniciando...",
+    "collectButton":      "Coletar!",
+    "collecting":         "Coletando...",
+    "secondsLeft":        "{{seconds}}s restantes",
+    "readyToCollect":     "Pronto para coletar",
+    "yield":              "Rendimento",
+    "cost":               "Custo",
+    "sestLabel":          "Sestércio",
+    "inputsLabel":        "Materiais",
+    "perRun":             "por ciclo",
+    "perLevel":           "por nível",
+    "level":              "Nv. {{level}}",
+    "upgradeButton":      "Melhorar → Nv.{{nextLevel}} ({{cost}} ⚙)",
+    "upgrading":          "Melhorando...",
+    "upgradeTooltip":     "Melhorar para o Nível {{nextLevel}} por {{cost}} Sestércios",
+    "storageBonus":       "Capacidade de Armazém",
+    "storageUnits":       "unidades",
+    "qualityLabel":       "Qualidade",
+    "qualityCost":        "custo de qualidade",
+    "constructTitle":     "Construir um Novo Edifício",
+    "constructable":      "Construível",
+    "buildButton":        "Construir",
+    "building":           "Construindo...",
+    "CASTRA_LIGNATORUM":  "Castra Lignatorum (Acampamento Madeireiro)",
+    "FUNDUS_FRUMENTI":    "Fundus Frumenti (Fazenda de Grãos)",
+    "PISTRINUM":          "Pistrinum (Moinho)",
+    "HORREUM":            "Horreum (Armazém)",
+    "ACADEMIA":           "Academia (Escola)",
+    "DOGANA":             "Dogana (Alfândega)"
+  },
+
   "market": {
     "tabProduction": "Produção",
     "tabMarket":     "Mercado",
@@ -45,6 +84,139 @@
     "tabBank":       "Banco",
     "tabSenate":     "Senado",
     "yourBalance":   "Seu saldo",
-    "available":     "disponível"
+    "available":     "disponível",
+
+    "npc": {
+      "title":         "O Império (Mercado NPC)",
+      "subtitle":      "Venda recursos diretamente ao Império. Os preços variam com os eventos de mercado.",
+      "lockedTitle":   "Comércio Imperial Bloqueado",
+      "lockedMessage": "Construa uma Dogana (Alfândega) para desbloquear os Contratos Imperiais. Enquanto isso, negocie com outros jogadores no Fórum.",
+      "unitLabel":     "unidade",
+      "resourceLabel": "Recurso",
+      "amountLabel":   "Quantidade",
+      "sellButton":    "Vender ao Império",
+      "selling":       "Vendendo..."
+    },
+
+    "p2p": {
+      "title":           "O Fórum (Mercado de Jogadores)",
+      "subtitle":        "Negocie diretamente com outros cidadãos. Defina seus próprios preços.",
+      "listForm":        "Criar uma Nova Listagem",
+      "resourceLabel":   "Recurso",
+      "amountLabel":     "Quantidade",
+      "priceLabel":      "Preço / Unidade (Sestércios)",
+      "listButton":      "Colocar à Venda",
+      "listing":         "Publicando...",
+      "listSuccess":     "Publicado! Recursos estão agora em custódia.",
+      "activeListings":  "Listagens Ativas",
+      "loadingListings": "Carregando listagens...",
+      "noListings":      "Nenhuma listagem disponível. Seja o primeiro a publicar algo!",
+      "colSeller":       "Vendedor",
+      "colResource":     "Recurso",
+      "colQuality":      "Qualidade",
+      "colAmount":       "Quantidade",
+      "colPricePerUnit": "Preço / Unidade",
+      "colTotal":        "Total",
+      "ownListing":      "sua",
+      "buyButton":       "Comprar",
+      "buying":          "Comprando...",
+      "cancelButton":    "Cancelar"
+    },
+
+    "errors": {
+      "insufficientFunds":     "Sestércios insuficientes.",
+      "insufficientResources": "Recursos insuficientes.",
+      "invalidAmount":         "Insira uma quantidade positiva válida.",
+      "invalidPrice":          "Insira um preço positivo válido.",
+      "ownListing":            "Você não pode comprar sua própria listagem."
+    }
+  },
+
+  "contracts": {
+    "sendTitle":           "Enviar um Contrato",
+    "sendSubtitle":        "Proponha uma troca direta com outro jogador. Os recursos ficam em custódia até serem aceitos ou cancelados.",
+    "receiverLabel":       "Destinatário (nome de usuário)",
+    "receiverPlaceholder": "ex. marcus",
+    "resourceLabel":       "Recurso",
+    "amountLabel":         "Quantidade",
+    "priceLabel":          "Preço / Unidade (Sestércios)",
+    "sendButton":          "Enviar Contrato",
+    "sending":             "Enviando...",
+
+    "incomingTitle":  "Contratos Recebidos",
+    "outgoingTitle":  "Contratos Enviados",
+    "noContracts":    "Nenhum contrato pendente.",
+    "loading":        "Carregando contratos...",
+
+    "colFrom":         "De",
+    "colTo":           "Para",
+    "colResource":     "Recurso",
+    "colAmount":       "Quantidade",
+    "colPricePerUnit": "Preço / Unidade",
+    "colTotal":        "Total",
+
+    "acceptButton": "Aceitar",
+    "cancelButton": "Cancelar",
+
+    "errors": {
+      "receiverRequired": "Insira o nome de usuário do destinatário.",
+      "invalidAmount":    "Insira uma quantidade positiva válida.",
+      "invalidPrice":     "Insira um preço positivo válido."
+    }
+  },
+
+  "bonds": {
+    "issueTitle":    "Emitir um Título",
+    "issueSubtitle": "Solicite capital do mercado. Defina um valor principal e taxa de juros. Os fundos são transferidos quando um jogador compra seu título.",
+    "issueButton":   "Emitir Título",
+    "issuing":       "Emitindo...",
+
+    "principalLabel": "Principal (Sestércios)",
+    "rateLabel":      "Taxa de Juros (%)",
+    "daysLabel":      "Duração (dias)",
+    "repayPreview":   "Reembolso total",
+
+    "marketTitle":         "Mercado de Títulos",
+    "myIssuedTitle":       "Meus Títulos Emitidos",
+    "myInvestmentsTitle":  "Meus Investimentos",
+    "loading":             "Carregando títulos...",
+    "noMarketBonds":       "Nenhum título disponível no mercado.",
+    "noIssuedBonds":       "Você não emitiu nenhum título.",
+    "noInvestments":       "Você não investiu em nenhum título.",
+
+    "colIssuer":    "Emissor",
+    "colBuyer":     "Comprador",
+    "colPrincipal": "Principal",
+    "colRate":      "Taxa",
+    "colRepayment": "Reembolso",
+    "colStatus":    "Status",
+
+    "buyButton":   "Investir",
+    "repayButton": "Reembolsar",
+
+    "errors": {
+      "invalidPrincipal": "Insira um valor principal positivo válido.",
+      "invalidRate":      "Insira uma taxa de juros não negativa válida.",
+      "invalidDays":      "Insira uma duração em dias válida (mínimo 1)."
+    }
+  },
+
+  "senate": {
+    "title":         "O Senado",
+    "subtitle":      "Os 50 cidadãos mais ricos classificados por patrimônio líquido. Riqueza é poder.",
+    "loading":       "Carregando ranking...",
+    "refreshButton": "Atualizar",
+    "refreshing":    "Atualizando...",
+    "empty":         "Nenhum jogador encontrado.",
+    "you":           "você",
+
+    "colRank":       "#",
+    "colPlayer":     "Jogador",
+    "colSestertius": "Sestércio",
+    "colInventory":  "Inventário",
+    "colBuildings":  "Edifícios",
+    "colNetWorth":   "Patrimônio Líquido",
+
+    "formulaNote": "Patrimônio Líquido = Sestércios + (inventário × preço NPC × multiplicador de qualidade) + (edifícios × custo de melhoria × nível)"
   }
 }

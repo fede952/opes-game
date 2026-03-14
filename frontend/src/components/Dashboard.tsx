@@ -140,13 +140,14 @@ const BUILDING_RESOURCE_MAP: Readonly<Record<string, ResourceId>> = {
  * in sync when updating gameConfig.ts.
  */
 interface ClientBuildingDisplay {
-  output:            string;
-  base_yield:        number;
-  base_cost:         number;   // Sestertius wages per run at level 1
-  inputs:            Array<{ resource: string; amount: number }>;
-  upgrade_base_cost: number;   // Cost to upgrade: upgrade_base_cost × current_level
-  build_cost?:       number;   // One-time construction cost (undefined = starter)
-  passive?:          boolean;  // Phase 7: passive buildings (HORREUM) have no production
+  output:                string;
+  base_yield:            number;
+  base_cost:             number;   // Sestertius wages per run at level 1
+  inputs:                Array<{ resource: string; amount: number }>;
+  upgrade_base_cost:     number;   // Cost to upgrade: upgrade_base_cost × current_level
+  build_cost?:           number;   // One-time Sestertius construction cost
+  build_cost_resources?: Array<{ resource: string; amount: number }>; // Non-Sestertius resource costs
+  passive?:              boolean;  // Phase 7: passive buildings (HORREUM) have no production
 }
 
 /**
@@ -160,7 +161,8 @@ const BUILDING_DISPLAY_CONFIG: Readonly<Record<string, ClientBuildingDisplay>> =
   FUNDUS_FRUMENTI:   { output: 'FRUMENTUM', base_yield: 15, base_cost: 3,  inputs: [],                                     upgrade_base_cost: 50,  passive: false },
   PISTRINUM:         { output: 'FARINA',    base_yield: 5,  base_cost: 5,  inputs: [{ resource: 'FRUMENTUM', amount: 10 }], upgrade_base_cost: 100, build_cost: 100,  passive: false },
   HORREUM:           { output: '',          base_yield: 0,  base_cost: 0,  inputs: [],                                     upgrade_base_cost: 150, build_cost: 200,  passive: true  },
-  ACADEMIA:          { output: 'RESEARCH',  base_yield: 1,  base_cost: 10, inputs: [],                                     upgrade_base_cost: 75,  build_cost: 150,  passive: false },
+  ACADEMIA:          { output: 'RESEARCH',  base_yield: 1,  base_cost: 10, inputs: [],                                     upgrade_base_cost: 75,  build_cost: 150,                                             passive: false },
+  DOGANA:            { output: '',          base_yield: 0,  base_cost: 0,  inputs: [],                                     upgrade_base_cost: 200, build_cost: 500, build_cost_resources: [{ resource: 'LIGNUM', amount: 50 }], passive: true  },
 } as const;
 
 /** Returns level-scaled production cost info for a building card display. */
@@ -869,7 +871,7 @@ const Dashboard: React.FC = () => {
                             </span>
                             <div className="flex gap-1.5 items-center flex-wrap justify-end">
                               <span className="text-xs px-2 py-0.5 rounded-full bg-roman-marble border border-roman-gold/40 text-roman-dark font-bold">
-                                {t('buildings.level')} {building.level}
+                                {t('buildings.level', { level: building.level })}
                               </span>
                               <span
                                 className={[
@@ -1048,9 +1050,14 @@ const Dashboard: React.FC = () => {
              * HORREUM, ACADEMIA: repeatable — always visible.
              */}
             {(() => {
-              const BUILDABLE_TYPES = ['PISTRINUM', 'HORREUM', 'ACADEMIA'] as const;
-              const ownsPistrinum   = buildings.some((b) => b.building_type === 'PISTRINUM');
-              const visible         = BUILDABLE_TYPES.filter((type) => type !== 'PISTRINUM' || !ownsPistrinum);
+              const BUILDABLE_TYPES = ['PISTRINUM', 'HORREUM', 'ACADEMIA', 'DOGANA'] as const;
+              // Hide one-of-a-kind buildings once already owned.
+              const ownsPistrinum = buildings.some((b) => b.building_type === 'PISTRINUM');
+              const ownsDogana    = buildings.some((b) => b.building_type === 'DOGANA');
+              const visible = BUILDABLE_TYPES.filter((type) =>
+                (type !== 'PISTRINUM' || !ownsPistrinum) &&
+                (type !== 'DOGANA'    || !ownsDogana)
+              );
 
               if (visible.length === 0) return null;
 
@@ -1111,6 +1118,16 @@ const Dashboard: React.FC = () => {
                                 <ResourceIcon resourceId="SESTERTIUS" />
                               </strong>
                               {' '}{t('buildings.sestLabel')}
+                              {/* Resource costs (e.g., LIGNUM for DOGANA) */}
+                              {cfg.build_cost_resources?.map((r) => (
+                                <span key={r.resource} className="flex items-center gap-0.5">
+                                  {' + '}
+                                  <strong className="text-roman-dark flex items-center gap-1">
+                                    {r.amount}
+                                    <ResourceIcon resourceId={r.resource} />
+                                  </strong>
+                                </span>
+                              ))}
                             </div>
                           </div>
 

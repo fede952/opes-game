@@ -57,7 +57,7 @@
     "inputsLabel":        "Inputs",
     "perRun":             "per run",
     "perLevel":           "per level",
-    "level":              "Level",
+    "level":              "Lv. {{level}}",
     "upgradeButton":      "Upgrade → Lv.{{nextLevel}} ({{cost}} ⚙)",
     "upgrading":          "Upgrading...",
     "upgradeTooltip":     "Upgrade to Level {{nextLevel}} for {{cost}} Sestertius",
@@ -73,7 +73,8 @@
     "FUNDUS_FRUMENTI":    "Fundus Frumenti (Grain Farm)",
     "PISTRINUM":          "Pistrinum (Mill)",
     "HORREUM":            "Horreum (Warehouse)",
-    "ACADEMIA":           "Academia (School)"
+    "ACADEMIA":           "Academia (School)",
+    "DOGANA":             "Dogana (Customs Office)"
   },
 
   "market": {
@@ -90,6 +91,8 @@
     "npc": {
       "title":         "The Empire (NPC Market)",
       "subtitle":      "Sell resources directly to the Empire. Prices fluctuate with market events.",
+      "lockedTitle":   "Imperial Trade Restricted",
+      "lockedMessage": "Construct a Dogana (Customs Office) to unlock Imperial Contracts. Trade with other players in the Forum instead.",
       "unitLabel":     "unit",
       "resourceLabel": "Resource",
       "amountLabel":   "Amount",
@@ -176,6 +179,7 @@
 
     "principalLabel": "Principal (Sestertius)",
     "rateLabel":      "Interest Rate (%)",
+    "daysLabel":      "Duration (days)",
     "repayPreview":   "Total repayment",
 
     "marketTitle":         "Bond Market",
@@ -198,7 +202,8 @@
 
     "errors": {
       "invalidPrincipal": "Please enter a valid positive principal amount.",
-      "invalidRate":      "Please enter a valid non-negative interest rate."
+      "invalidRate":      "Please enter a valid non-negative interest rate.",
+      "invalidDays":      "Please enter a valid duration in days (minimum 1)."
     }
   },
 

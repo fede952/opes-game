@@ -56,11 +56,16 @@
  * CONSTRUCTION TRANSACTION: POST /build
  * ================================================================
  *
- *   1. Lock SESTERTIUS (Q0) — ensure atomic check + deduct
- *   2. Validate balance ≥ build_cost
- *   3. Deduct Sestertius (Q0)
- *   4. Insert new building row
- *   5. Ensure output resource Q0 row exists (upsert, non-passive only)
+ *   1a. Lock any build_cost_resources rows alphabetically by resource_id
+ *       (e.g., LIGNUM row — L comes before S alphabetically, so it must
+ *       be locked first to maintain a consistent cross-route lock order
+ *       and prevent deadlocks with the production route).
+ *   1b. Lock SESTERTIUS (Q0)
+ *   2.  Validate all resource balances ≥ required amounts
+ *   3.  Deduct build_cost_resources (e.g., LIGNUM)
+ *   4.  Deduct Sestertius (Q0)
+ *   5.  Insert new building row
+ *   6.  Ensure output resource Q0 row exists (upsert, non-passive only)
  */
 
 import { Router, Request, Response, NextFunction } from 'express';
@@ -341,11 +346,48 @@ router.post(
 
       const buildCost: number = config.build_cost;
 
+      // Sort resource costs alphabetically so we always lock in the same order.
+      // LIGNUM (L) must be locked before SESTERTIUS (S) to avoid deadlocks with
+      // the production/start route, which also locks inventory alphabetically.
+      const resourceCosts = [...(config.build_cost_resources ?? [])].sort(
+        (a, b) => a.resource.localeCompare(b.resource)
+      );
+
       const newBuilding = await withTransaction(async (client) => {
 
-        // ---- STEP 1: Lock SESTERTIUS row at quality = 0 ----
+        // ---- STEP 1a: Lock and validate build_cost_resources (alphabetical) ----
         //
-        // Phase 7: explicit quality = 0 to match the new 3-column PK.
+        // We lock these BEFORE SESTERTIUS because their resource_id values
+        // (e.g., 'LIGNUM') sort before 'SESTERTIUS' alphabetically.
+        // Consistent lock ordering across all routes prevents deadlocks.
+        const lockedResources: Array<{ resource: string; required: number }> = [];
+
+        for (const { resource, amount: required } of resourceCosts) {
+          const row = await client.query<{ amount: number }>(
+            `SELECT amount
+             FROM   inventories
+             WHERE  user_id = $1 AND resource_id = $2 AND quality = 0
+             FOR UPDATE`,
+            [userId, resource]
+          );
+
+          const current: number = row.rows[0]?.amount ?? 0;
+
+          if (current < required) {
+            throw new HttpError(
+              400,
+              `Insufficient ${resource}. Constructing a ${normalizedType} requires ` +
+              `${required} ${resource} but you only have ${current}.`
+            );
+          }
+
+          lockedResources.push({ resource, required });
+        }
+
+        // ---- STEP 1b: Lock SESTERTIUS row at quality = 0 ----
+        //
+        // Locked AFTER build_cost_resources because 'SESTERTIUS' sorts after
+        // all current material resource IDs alphabetically.
         const sestertiumRow = await client.query<{ amount: number }>(
           `SELECT amount
            FROM   inventories
@@ -356,7 +398,7 @@ router.post(
 
         const currentSestertius: number = sestertiumRow.rows[0]?.amount ?? 0;
 
-        // ---- STEP 2: Validate balance ----
+        // ---- STEP 2: Validate Sestertius balance ----
         if (currentSestertius < buildCost) {
           throw new HttpError(
             400,
@@ -365,7 +407,17 @@ router.post(
           );
         }
 
-        // ---- STEP 3: Deduct construction cost from SESTERTIUS (Q0) ----
+        // ---- STEP 3: Deduct build_cost_resources from inventory (Q0) ----
+        for (const { resource, required } of lockedResources) {
+          await client.query(
+            `UPDATE inventories
+             SET    amount = amount - $1
+             WHERE  user_id = $2 AND resource_id = $3 AND quality = 0`,
+            [required, userId, resource]
+          );
+        }
+
+        // ---- STEP 4: Deduct construction cost from SESTERTIUS (Q0) ----
         await client.query(
           `UPDATE inventories
            SET    amount = amount - $1
@@ -373,7 +425,7 @@ router.post(
           [buildCost, userId]
         );
 
-        // ---- STEP 4: Insert the new building ----
+        // ---- STEP 5: Insert the new building ----
         const buildingResult = await client.query<{
           id:            string;
           building_type: string;
@@ -385,7 +437,7 @@ router.post(
           [userId, normalizedType]
         );
 
-        // ---- STEP 5: Ensure output resource Q0 inventory row exists ----
+        // ---- STEP 6: Ensure output resource Q0 inventory row exists ----
         //
         // Skip for passive buildings (HORREUM has no output resource).
         // For production buildings, ensure the player can receive the new

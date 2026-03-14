@@ -188,6 +188,32 @@ router.post(
         return;
       }
 
+      // ---- DOGANA CHECK ----
+      //
+      // Module 1 "Trade Reform": only players who have built a DOGANA
+      // (Customs Office) may sell resources to the Empire. Without one,
+      // they must trade with other players on the P2P Forum instead.
+      //
+      // WHY CHECK HERE (not middleware)?
+      // This restriction applies only to the NPC sell endpoint, not to
+      // price reads or P2P operations. Inline check is clearer and avoids
+      // a middleware that would need route-specific logic anyway.
+      const doganaResult = await query<{ count: string }>(
+        `SELECT COUNT(*)::text AS count
+         FROM   user_buildings
+         WHERE  user_id       = $1
+           AND  building_type = 'DOGANA'`,
+        [userId]
+      );
+
+      if (parseInt(doganaResult.rows[0].count, 10) === 0) {
+        res.status(403).json({
+          error: 'You need a Customs Office (Dogana) to trade with the Empire. ' +
+                 'Build one from the Construction tab, or trade with other players on the Forum.',
+        });
+        return;
+      }
+
       const result = await withTransaction(async (client) => {
 
         // ---- STEP 1: Fetch current price from npc_prices table ----

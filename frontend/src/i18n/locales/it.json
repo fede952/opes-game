@@ -1,97 +1,222 @@
 {
-  "auth": {
-    "login": "Accedi",
-    "register": "Registrati",
-    "username": "Nome utente",
-    "password": "Password",
-    "submitLogin": "Entra nell'Impero",
-    "submitRegister": "Fonda il tuo Impero",
-    "logout": "Esci",
-    "error": "Errore di autenticazione"
+  "_comment": "Italiano (it) — segue la struttura esatta di en.json.",
+  "_translators": "Opes Localization Team",
+
+  "common": {
+    "gameTitle": "Opes",
+    "welcome":   "Benvenuto in Opes!",
+    "subtitle":  "Una simulazione economica multiplayer nell'Antica Roma e Grecia.",
+    "loading":   "Caricamento...",
+    "error":     "Si è verificato un errore. Riprova.",
+    "devNote":   "i18n attivo. Usa il selettore per cambiare lingua."
   },
+
+  "auth": {
+    "loginTitle":       "Bentornato",
+    "registerTitle":    "Unisciti a Opes",
+    "username":         "Nome utente",
+    "password":         "Password",
+    "loginButton":      "Accedi",
+    "registerButton":   "Registrati",
+    "submitting":       "Attendere...",
+    "switchToRegister": "Non hai un account? Registrati qui",
+    "switchToLogin":    "Hai già un account? Accedi",
+    "logoutButton":     "Esci"
+  },
+
   "dashboard": {
-    "welcome": "Ave, {{username}}",
-    "storageLabel": "Capacità Magazzino",
+    "greeting":         "Ave, {{username}}!",
+    "inventoryTitle":   "Le tue Risorse",
+    "loadingInventory": "Caricamento inventario...",
+    "storageLabel":     "Magazzino",
     "resources": {
       "SESTERTIUS": "Sesterzi",
-      "LIGNUM": "Legname",
-      "FRUMENTUM": "Grano",
-      "FARINA": "Farina",
-      "RESEARCH": "Punti Ricerca"
+      "LIGNUM":     "Legname",
+      "FRUMENTUM":  "Grano",
+      "FARINA":     "Farina",
+      "RESEARCH":   "Ricerca"
     }
   },
+
   "buildings": {
-    "level": "Livello {{level}}",
-    "upgradeButton": "Migliora ({{cost}} Sesterzi)",
-    "upgrading": "In miglioramento...",
-    "upgradeTooltip": "Aumenta la produzione",
-    "constructTitle": "Costruisci",
-    "constructable": "Disponibile",
-    "buildButton": "Costruisci ({{cost}} Sesterzi)",
-    "CASTRA_LIGNATORUM": "Campo dei Taglialegna",
-    "FUNDUS_FRUMENTI": "Campo di Grano",
-    "PISTRINUM": "Mulino",
-    "HORREUM": "Magazzino",
-    "ACADEMIA": "Accademia",
-    "passive": "Passivo",
-    "storageBonus": "Capacità Bonus",
-    "storageUnits": "unità",
-    "qualityLabel": "Qualità",
-    "qualityCost": "Costo Ricerca",
-    "perLevel": "per livello",
-    "readyToCollect": "Pronto!",
-    "yield": "Produzione",
-    "cost": "Costo",
-    "sestLabel": "Sesterzi",
-    "inputsLabel": "Materiali",
-    "perRun": "a ciclo"
+    "title":              "I tuoi Edifici",
+    "loading":            "Caricamento edifici...",
+    "statusIdle":         "In attesa",
+    "statusProducing":    "In produzione",
+    "passive":            "Passivo",
+    "produces":           "Produce",
+    "startButton":        "Avvia Produzione",
+    "starting":           "Avvio...",
+    "collectButton":      "Raccogli!",
+    "collecting":         "Raccolta...",
+    "secondsLeft":        "{{seconds}}s rimasti",
+    "readyToCollect":     "Pronto alla raccolta",
+    "yield":              "Resa",
+    "cost":               "Costo",
+    "sestLabel":          "Sesterzi",
+    "inputsLabel":        "Materiali",
+    "perRun":             "a ciclo",
+    "perLevel":           "per livello",
+    "level":              "Lv. {{level}}",
+    "upgradeButton":      "Migliora → Lv.{{nextLevel}} ({{cost}} ⚙)",
+    "upgrading":          "Miglioramento...",
+    "upgradeTooltip":     "Migliora al Livello {{nextLevel}} per {{cost}} Sesterzi",
+    "storageBonus":       "Capacità di Magazzino",
+    "storageUnits":       "unità",
+    "qualityLabel":       "Qualità",
+    "qualityCost":        "costo qualità",
+    "constructTitle":     "Costruisci un Nuovo Edificio",
+    "constructable":      "Costruibile",
+    "buildButton":        "Costruisci",
+    "building":           "Costruzione...",
+    "CASTRA_LIGNATORUM":  "Castra Lignatorum (Campo dei Taglialegna)",
+    "FUNDUS_FRUMENTI":    "Fundus Frumenti (Fattoria del Grano)",
+    "PISTRINUM":          "Pistrinum (Mulino)",
+    "HORREUM":            "Horreum (Magazzino)",
+    "ACADEMIA":           "Academia (Scuola)",
+    "DOGANA":             "Dogana (Ufficio Doganale)"
   },
+
   "market": {
-    "npcTitle": "L'Impero (NPC)",
-    "p2pTitle": "Il Foro Romano (Giocatori)",
-    "sell": "Vendi",
-    "buy": "Compra",
-    "cancel": "Ritira",
-    "max": "Max",
-    "pricePerUnit": "Prezzo Unitario",
-    "amount": "Quantità",
-    "quality": "Qualità",
-    "total": "Totale",
-    "listResource": "Crea Offerta",
+    "tabProduction": "Produzione",
+    "tabMarket":     "Mercato",
+    "tabContracts":  "Contratti",
+    "tabBank":       "Banca",
+    "tabSenate":     "Senato",
+    "yourBalance":   "Il tuo saldo",
+    "available":     "disponibile",
+
+    "npc": {
+      "title":         "L'Impero (Mercato NPC)",
+      "subtitle":      "Vendi risorse direttamente all'Impero. I prezzi variano con gli eventi di mercato.",
+      "lockedTitle":   "Commercio Imperiale Bloccato",
+      "lockedMessage": "Costruisci una Dogana (Ufficio Doganale) per sbloccare i Contratti Imperiali. Nel frattempo, commercia con altri giocatori nel Foro.",
+      "unitLabel":     "unità",
+      "resourceLabel": "Risorsa",
+      "amountLabel":   "Quantità",
+      "sellButton":    "Vendi all'Impero",
+      "selling":       "Vendita..."
+    },
+
     "p2p": {
-      "colQuality": "Qualità",
-      "colSeller": "Mercante",
-      "colResource": "Risorsa",
-      "colAmount": "Q.tà",
-      "colPrice": "Prezzo"
+      "title":           "Il Foro Romano (Mercato Giocatori)",
+      "subtitle":        "Commercia direttamente con altri cittadini. Fissa i tuoi prezzi.",
+      "listForm":        "Crea una Nuova Offerta",
+      "resourceLabel":   "Risorsa",
+      "amountLabel":     "Quantità",
+      "priceLabel":      "Prezzo / Unità (Sesterzi)",
+      "listButton":      "Metti in Vendita",
+      "listing":         "Pubblicazione...",
+      "listSuccess":     "Pubblicato! Le risorse sono ora in deposito.",
+      "activeListings":  "Offerte Attive",
+      "loadingListings": "Caricamento offerte...",
+      "noListings":      "Nessuna offerta disponibile. Sii il primo a pubblicare qualcosa!",
+      "colSeller":       "Venditore",
+      "colResource":     "Risorsa",
+      "colQuality":      "Qualità",
+      "colAmount":       "Quantità",
+      "colPricePerUnit": "Prezzo / Unità",
+      "colTotal":        "Totale",
+      "ownListing":      "tua",
+      "buyButton":       "Acquista",
+      "buying":          "Acquisto...",
+      "cancelButton":    "Annulla"
+    },
+
+    "errors": {
+      "insufficientFunds":     "Sesterzi insufficienti.",
+      "insufficientResources": "Risorse insufficienti.",
+      "invalidAmount":         "Inserisci una quantità positiva valida.",
+      "invalidPrice":          "Inserisci un prezzo positivo valido.",
+      "ownListing":            "Non puoi acquistare la tua stessa offerta."
     }
   },
+
   "contracts": {
-    "title": "Contratti (B2B)",
-    "send": "Invia Contratto",
-    "receiver": "Destinatario",
-    "incoming": "Contratti in Entrata",
-    "outgoing": "Contratti in Uscita",
-    "accept": "Accetta",
-    "reject": "Rifiuta",
-    "cancel": "Annulla"
+    "sendTitle":           "Invia un Contratto",
+    "sendSubtitle":        "Proponi uno scambio diretto a un altro giocatore. Le risorse sono tenute in deposito fino all'accettazione o annullamento.",
+    "receiverLabel":       "Destinatario (nome utente)",
+    "receiverPlaceholder": "es. marcus",
+    "resourceLabel":       "Risorsa",
+    "amountLabel":         "Quantità",
+    "priceLabel":          "Prezzo / Unità (Sesterzi)",
+    "sendButton":          "Invia Contratto",
+    "sending":             "Invio...",
+
+    "incomingTitle":  "Contratti in Entrata",
+    "outgoingTitle":  "Contratti in Uscita",
+    "noContracts":    "Nessun contratto in sospeso.",
+    "loading":        "Caricamento contratti...",
+
+    "colFrom":         "Da",
+    "colTo":           "A",
+    "colResource":     "Risorsa",
+    "colAmount":       "Quantità",
+    "colPricePerUnit": "Prezzo / Unità",
+    "colTotal":        "Totale",
+
+    "acceptButton": "Accetta",
+    "cancelButton": "Annulla",
+
+    "errors": {
+      "receiverRequired": "Inserisci il nome utente del destinatario.",
+      "invalidAmount":    "Inserisci una quantità positiva valida.",
+      "invalidPrice":     "Inserisci un prezzo positivo valido."
+    }
   },
+
   "bonds": {
-    "title": "Banca di Roma",
-    "issue": "Emetti Obbligazione",
-    "principal": "Capitale Richiesto",
-    "interest": "Tasso di Interesse (%)",
-    "market": "Mercato Obbligazionario",
-    "myDebts": "I Miei Debiti",
-    "myInvestments": "I Miei Investimenti",
-    "repay": "Ripaga",
-    "buy": "Investi"
+    "issueTitle":    "Emetti un'Obbligazione",
+    "issueSubtitle": "Richiedi capitale al mercato. Imposta un capitale e un tasso d'interesse. I fondi vengono trasferiti quando un giocatore acquista la tua obbligazione.",
+    "issueButton":   "Emetti Obbligazione",
+    "issuing":       "Emissione...",
+
+    "principalLabel": "Capitale (Sesterzi)",
+    "rateLabel":      "Tasso d'Interesse (%)",
+    "daysLabel":      "Durata (giorni)",
+    "repayPreview":   "Rimborso totale",
+
+    "marketTitle":         "Mercato Obbligazionario",
+    "myIssuedTitle":       "Le Mie Obbligazioni Emesse",
+    "myInvestmentsTitle":  "I Miei Investimenti",
+    "loading":             "Caricamento obbligazioni...",
+    "noMarketBonds":       "Nessuna obbligazione attualmente sul mercato.",
+    "noIssuedBonds":       "Non hai emesso alcuna obbligazione.",
+    "noInvestments":       "Non hai investito in alcuna obbligazione.",
+
+    "colIssuer":    "Emittente",
+    "colBuyer":     "Acquirente",
+    "colPrincipal": "Capitale",
+    "colRate":      "Tasso",
+    "colRepayment": "Rimborso",
+    "colStatus":    "Stato",
+
+    "buyButton":   "Investi",
+    "repayButton": "Rimborsa",
+
+    "errors": {
+      "invalidPrincipal": "Inserisci un importo capitale positivo valido.",
+      "invalidRate":      "Inserisci un tasso d'interesse non negativo valido.",
+      "invalidDays":      "Inserisci una durata in giorni valida (minimo 1)."
+    }
   },
+
   "senate": {
-    "title": "Il Senato",
-    "leaderboard": "Classifica Globale",
-    "netWorth": "Valore Netto",
-    "rank": "Rango",
-    "player": "Senatore"
+    "title":         "Il Senato",
+    "subtitle":      "I 50 cittadini più ricchi classificati per patrimonio netto. La ricchezza è potere.",
+    "loading":       "Caricamento classifica...",
+    "refreshButton": "Aggiorna",
+    "refreshing":    "Aggiornamento...",
+    "empty":         "Nessun giocatore trovato.",
+    "you":           "tu",
+
+    "colRank":       "#",
+    "colPlayer":     "Giocatore",
+    "colSestertius": "Sesterzi",
+    "colInventory":  "Inventario",
+    "colBuildings":  "Edifici",
+    "colNetWorth":   "Patrimonio Netto",
+
+    "formulaNote": "Patrimonio Netto = Sesterzi + (inventario × prezzo NPC × moltiplicatore qualità) + (edifici × costo potenziamento × livello)"
   }
 }

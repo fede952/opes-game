@@ -154,6 +154,21 @@ export interface BuildingConfig {
   build_cost?:       number;
 
   /**
+   * Optional non-Sestertius resources consumed at construction time.
+   * Deducted from the player's Q0 inventory in the same build transaction.
+   *
+   * Example: DOGANA requires 50 LIGNUM on top of 500 Sestertius.
+   *   build_cost_resources: [{ resource: 'LIGNUM', amount: 50 }]
+   *
+   * WHY RESOURCES IN ADDITION TO SESTERTIUS?
+   * Some buildings represent physical infrastructure (a customs house
+   * needs real timber). The resource requirement forces players to have
+   * produced or bought the material, creating interdependence before they
+   * can unlock advanced features like NPC market access.
+   */
+  build_cost_resources?: BuildingInput[];
+
+  /**
    * Phase 7: If true, this building has a PASSIVE effect and cannot have
    * production runs started on it. Its level affects game state indirectly
    * (e.g., HORREUM level increases storage capacity) without producing a resource.
@@ -328,6 +343,45 @@ export const BUILDING_CONFIGS: Readonly<Record<string, BuildingConfig>> = {
     upgrade_base_cost: 75,
     build_cost:        150,
     duration_seconds:  1800, // 30 minutes — strategic resource
+  },
+
+  /**
+   * DOGANA — Customs Office (Module 1: Trade Reform)
+   *
+   * A PASSIVE infrastructure building that gates access to the NPC
+   * "Empire" market. Without a Dogana, players can only trade with
+   * each other on the P2P Forum. Building one forces early players
+   * to participate in the player economy before they can cash out
+   * with the Empire.
+   *
+   * Construction cost: 500 Sestertius + 50 LIGNUM.
+   *   The wood requirement ensures a player must have run their
+   *   Lumber Camp before they can unlock NPC trade — creating a
+   *   natural progression gate.
+   *
+   * ECONOMIC ROLE:
+   *   This is the MODULE 1 "Trade Reform" gate. It prevents new
+   *   accounts from immediately dumping all resources to the Empire
+   *   and instead forces player-to-player trade early on.
+   *
+   *   Designed as a ONE-TIME INVESTMENT: once built, it stays.
+   *   Players cannot build more than one (Dashboard hides the card
+   *   once owned; server-side there is no restriction on multiples,
+   *   but the UI prevents it).
+   *
+   * `passive: true` — no production runs; the building's mere
+   * existence unlocks NPC market access for its owner.
+   */
+  DOGANA: {
+    output:              '',  // No production output — purely an unlock building
+    base_yield:          0,
+    base_cost:           0,
+    inputs:              [],
+    upgrade_base_cost:   200,
+    build_cost:          500,  // 500 Sestertius — significant but reachable
+    build_cost_resources: [{ resource: 'LIGNUM', amount: 50 }],  // 50 wood
+    passive:             true,
+    duration_seconds:    0,   // Passive: no production runs
   },
 
 } as const;

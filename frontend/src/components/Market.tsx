@@ -101,6 +101,11 @@ const Market: React.FC = () => {
   const { t }            = useTranslation();
   const { user, logout } = useAuth();
 
+  // ---- DOGANA STATE ----
+  // Whether this player has built a Customs Office. Controls NPC market access.
+  // Defaults to false (locked) until the buildings fetch resolves.
+  const [hasDogana, setHasDogana] = useState<boolean>(false);
+
   // ---- NPC PRICES STATE ----
   // Fetched from GET /market/npc/prices. Replaces hardcoded NPC_DISPLAY_PRICES.
   const [npcPrices, setNpcPrices] = useState<NpcPrice[]>([]);
@@ -161,6 +166,22 @@ const Market: React.FC = () => {
   // ================================================================
   // DATA FETCHING
   // ================================================================
+
+  /**
+   * Checks whether the logged-in player owns a DOGANA (Customs Office).
+   *
+   * The DOGANA gates access to the NPC Empire market (Module 1: Trade Reform).
+   * We fetch the full building roster and look for a DOGANA entry. If the
+   * fetch fails, we default to `false` (locked) — the secure default.
+   */
+  const fetchDoganaStatus = useCallback(async (): Promise<void> => {
+    try {
+      const data = await apiRequest<{ buildings: { building_type: string }[] }>('/buildings');
+      setHasDogana(data.buildings.some((b) => b.building_type === 'DOGANA'));
+    } catch {
+      setHasDogana(false); // Default: no access if check cannot be confirmed
+    }
+  }, []);
 
   /**
    * Fetches current NPC buy prices from the server.
@@ -224,12 +245,13 @@ const Market: React.FC = () => {
     }
   }, []);
 
-  // Fetch all three data sources when the Market tab first renders.
+  // Fetch all data sources when the Market tab first renders.
   useEffect(() => {
+    void fetchDoganaStatus();
     void fetchNpcPrices();
     void fetchInventory();
     void fetchListings();
-  }, [fetchNpcPrices, fetchInventory, fetchListings]);
+  }, [fetchDoganaStatus, fetchNpcPrices, fetchInventory, fetchListings]);
 
   // ================================================================
   // NPC SELL HANDLER
@@ -449,7 +471,24 @@ const Market: React.FC = () => {
       {/* SECTION 1: NPC "The Empire" Market                               */}
       {/* ================================================================ */}
       <section>
-        <SectionHeader title={t('market.npc.title')} subtitle={t('market.npc.subtitle')} />
+        <SectionHeader title={t('market.npc.title')} subtitle={hasDogana ? t('market.npc.subtitle') : undefined} />
+
+        {/* Lock card — shown when the player has not built a DOGANA yet.
+         * The NPC sell form is hidden entirely; only the Forum is available. */}
+        {!hasDogana && (
+          <div className="p-6 bg-roman-ivory rounded-xl border border-roman-gold/20 flex flex-col items-center gap-3 text-center">
+            <span className="text-3xl" aria-hidden="true">🏛️</span>
+            <p className="font-bold text-roman-dark text-sm uppercase tracking-wider m-0">
+              {t('market.npc.lockedTitle')}
+            </p>
+            <p className="text-roman-stone text-sm max-w-sm m-0">
+              {t('market.npc.lockedMessage')}
+            </p>
+          </div>
+        )}
+
+        {/* NPC sell UI — only rendered when the player owns a DOGANA */}
+        {hasDogana && (<>
 
         {/* Dynamic price display — live values from the npc_prices DB table.
          * Prices can fluctuate via simulateMarketEvents.ts (±20% per event).
@@ -576,6 +615,7 @@ const Market: React.FC = () => {
         {npcSuccess && (
           <p className="text-green-700 text-sm mt-2">{npcSuccess}</p>
         )}
+        </>)}
       </section>
 
       {/* ================================================================ */}

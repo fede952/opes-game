@@ -211,8 +211,8 @@ router.post(
       const newUser = await withTransaction(async (client) => {
         // Insert the new user. RETURNING gives us back the generated id and username.
         const userResult = await client.query<{ id: string; username: string }>(
-          `INSERT INTO users (username, password_hash)
-           VALUES ($1, $2)
+          `INSERT INTO users (username, password_hash, sestertius)
+           VALUES ($1, $2, 1000)
            RETURNING id, username`,
           [trimmedUsername, passwordHash]
         );
@@ -224,10 +224,13 @@ router.post(
         // In a performance-critical path, you could use a single INSERT with
         // multiple value tuples: INSERT INTO inventories VALUES ($1,$2,0),($1,$3,0),...
         for (const resourceId of STARTING_RESOURCES) {
+          // SESTERTIUS starts at 1000; all other resources start at 0.
+          // quality = 0 is required by the 3-column PK (user_id, resource_id, quality).
+          const startingAmount = resourceId === 'SESTERTIUS' ? 1000 : 0;
           await client.query(
-            `INSERT INTO inventories (user_id, resource_id, amount)
-             VALUES ($1, $2, 0)`,
-            [user.id, resourceId]
+            `INSERT INTO inventories (user_id, resource_id, quality, amount)
+             VALUES ($1, $2, 0, $3)`,
+            [user.id, resourceId, startingAmount]
           );
         }
 
