@@ -116,53 +116,28 @@ const app: Application = express();
 // before reaching a route handler. Think of it as a security + parsing checkpoint.
 
 /**
- * MIDDLEWARE 1: Helmet — HTTP Security Headers
+ * MIDDLEWARE 1: CORS — Cross-Origin Resource Sharing
  *
- * helmet() automatically sets a suite of HTTP response headers that protect
- * against common, well-documented web attacks:
- *
- *   - Content-Security-Policy:     Restricts which scripts/styles can be loaded,
- *                                  defeating many XSS (Cross-Site Scripting) attacks.
- *   - X-Frame-Options:             Prevents the site from being embedded in an
- *                                  <iframe>, defeating clickjacking attacks.
- *   - X-Content-Type-Options:      Tells the browser not to "sniff" MIME types,
- *                                  preventing certain content-injection attacks.
- *   - Referrer-Policy:             Controls what URL is sent in the Referer header,
- *                                  reducing information leakage.
- *   - Strict-Transport-Security:   Forces browsers to use HTTPS (in production).
- *
- * SECURITY: Include helmet as the FIRST middleware so security headers are
- * applied to ALL responses, including error responses from later middleware.
- */
-app.use(helmet());
-
-/**
- * MIDDLEWARE 2: CORS — Cross-Origin Resource Sharing
- *
- * Browsers enforce the "Same-Origin Policy": JavaScript on page A (port 5173)
- * is blocked from making requests to server B (port 3001) by default.
- * CORS headers tell the browser which external origins are explicitly permitted.
+ * MUST come before Helmet so the Access-Control-Allow-Origin header is set
+ * on the response before Helmet's Cross-Origin-Resource-Policy header can
+ * interfere with it. If Helmet runs first and sets CORP: same-origin, the
+ * browser blocks the response before it ever reads the CORS headers.
  *
  * SECURITY: NEVER use cors({ origin: '*' }) in production. Wildcard CORS
  * means ANY website on the internet can make authenticated requests to your
  * API using your players' sessions/cookies — a severe CSRF vulnerability.
- *
- * WHY A HARDCODED WHITELIST HERE (not env vars)?
- * These are the canonical public URLs of the Opes frontend — they change only
- * when the deployment topology changes, not per-environment. Hardcoding them
- * prevents a misconfigured env var from silently blocking all frontend traffic
- * in production. Local dev is the only entry that varies across machines.
  */
-const CORS_WHITELIST: string[] = [
-  'https://opes.federicosella.com', // Custom domain (Cloudflare Pages)
-  'https://opes-game.pages.dev',    // Default Cloudflare Pages domain
-  'http://localhost:5173',          // Vite dev server (local development)
+const CORS_WHITELIST = [
+  'https://opes.federicosella.com',
+  'https://opes-game.pages.dev',
+  'http://localhost:5173',
 ];
+
+console.log('[CORS] Whitelist initialized with:', CORS_WHITELIST);
 
 app.use(
   cors({
     origin: (origin, callback) => {
-      // Log every incoming origin so Render logs show exactly what the browser sends.
       console.log('[CORS Check] Request from origin:', origin);
 
       if (CORS_WHITELIST.includes(origin ?? '') || !origin) {
@@ -171,15 +146,20 @@ app.use(
         callback(new Error(`CORS: Origin '${origin}' is not permitted.`));
       }
     },
-
-    /**
-     * credentials: true allows the browser to send the Authorization header
-     * (our JWT Bearer token) with cross-origin requests.
-     * When this is true, the origin MUST be a specific value — never '*'.
-     */
     credentials: true,
   })
 );
+
+/**
+ * MIDDLEWARE 2: Helmet — HTTP Security Headers
+ *
+ * Runs after CORS so it doesn't clobber the Access-Control-* headers that
+ * cors() already wrote. crossOriginResourcePolicy is relaxed to "cross-origin"
+ * so browsers can load resources served by this API from other origins.
+ */
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: 'cross-origin' },
+}));
 
 /**
  * MIDDLEWARE 3: JSON Body Parser
