@@ -1,0 +1,50 @@
+{
+  "_comment": "Indonesian (id). Bahasa Indonesia — the official language of Indonesia. ~270 million total speakers (native + second language). Uses Latin script.",
+  "_translators": "Opes Localization Team",
+
+  "common": {
+    "gameTitle": "Opes",
+    "welcome":   "Selamat datang di Opes!",
+    "subtitle":  "Simulasi ekonomi multipemain yang berlatar di Roma dan Yunani Kuno.",
+    "loading":   "Memuat...",
+    "error":     "Terjadi kesalahan. Silakan coba lagi.",
+    "devNote":   "Sistem i18n aktif. Gunakan pemilih untuk mengganti bahasa."
+  },
+
+  "auth": {
+    "loginTitle":       "Selamat datang kembali",
+    "registerTitle":    "Bergabung dengan Opes",
+    "username":         "Nama pengguna",
+    "password":         "Kata sandi",
+    "loginButton":      "Masuk",
+    "registerButton":   "Daftar",
+    "submitting":       "Mohon tunggu...",
+    "switchToRegister": "Belum punya akun? Daftar di sini",
+    "switchToLogin":    "Sudah punya akun? Masuk",
+    "logoutButton":     "Keluar"
+  },
+
+  "dashboard": {
+    "greeting":         "Ave, {{username}}!",
+    "inventoryTitle":   "Sumber Daya Anda",
+    "loadingInventory": "Memuat inventaris...",
+    "storageLabel":     "Gudang",
+    "resources": {
+      "SESTERTIUS": "Sestertius",
+      "LIGNUM":     "Lignum (Kayu)",
+      "FRUMENTUM":  "Frumentum (Gandum)",
+      "FARINA":     "Farina (Tepung)",
+      "RESEARCH":   "Penelitian"
+    }
+  },
+
+  "market": {
+    "tabProduction": "Produksi",
+    "tabMarket":     "Pasar",
+    "tabContracts":  "Kontrak",
+    "tabBank":       "Bank",
+    "tabSenate":     "Senat",
+    "yourBalance":   "Saldo Anda",
+    "available":     "tersedia"
+  }
+}

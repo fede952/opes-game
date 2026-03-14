@@ -1,0 +1,110 @@
+{
+  "_comment": "Italian (it) — Italiano. The language of the Roman Empire's descendants — a natural fit for Opes!",
+  "_translators": "Opes Localization Team",
+
+  "common": {
+    "gameTitle": "Opes",
+    "welcome":   "Benvenuto in Opes!",
+    "subtitle":  "Una simulazione economica multiplayer ambientata nell'antica Roma e Grecia.",
+    "loading":   "Caricamento in corso...",
+    "error":     "Si è verificato un errore. Riprova.",
+    "devNote":   "Il sistema i18n è attivo. Usa il selettore per cambiare lingua."
+  },
+
+  {
+  "auth": {
+    "login": "Accedi",
+    "register": "Registrati",
+    "username": "Nome utente",
+    "password": "Password",
+    "submitLogin": "Entra nell'Impero",
+    "submitRegister": "Fonda il tuo Impero",
+    "logout": "Esci",
+    "error": "Errore di autenticazione"
+  },
+  "dashboard": {
+    "welcome": "Ave, {{username}}",
+    "storageLabel": "Capacità Magazzino",
+    "resources": {
+      "SESTERTIUS": "Sesterzi",
+      "LIGNUM": "Legname",
+      "FRUMENTUM": "Grano",
+      "FARINA": "Farina",
+      "RESEARCH": "Punti Ricerca"
+    }
+  },
+  "buildings": {
+    "level": "Livello {{level}}",
+    "upgradeButton": "Migliora ({{cost}} Sesterzi)",
+    "upgrading": "In miglioramento...",
+    "upgradeTooltip": "Aumenta la produzione",
+    "constructTitle": "Costruisci",
+    "constructable": "Disponibile",
+    "buildButton": "Costruisci ({{cost}} Sesterzi)",
+    "CASTRA_LIGNATORUM": "Campo dei Taglialegna",
+    "FUNDUS_FRUMENTI": "Campo di Grano",
+    "PISTRINUM": "Mulino",
+    "HORREUM": "Magazzino",
+    "ACADEMIA": "Accademia",
+    "passive": "Passivo",
+    "storageBonus": "Capacità Bonus",
+    "storageUnits": "unità",
+    "qualityLabel": "Qualità",
+    "qualityCost": "Costo Ricerca",
+    "perLevel": "per livello",
+    "readyToCollect": "Pronto!",
+    "yield": "Produzione",
+    "cost": "Costo",
+    "sestLabel": "Sesterzi",
+    "inputsLabel": "Materiali",
+    "perRun": "a ciclo"
+  },
+  "market": {
+    "npcTitle": "L'Impero (NPC)",
+    "p2pTitle": "Il Foro Romano (Giocatori)",
+    "sell": "Vendi",
+    "buy": "Compra",
+    "cancel": "Ritira",
+    "max": "Max",
+    "pricePerUnit": "Prezzo Unitario",
+    "amount": "Quantità",
+    "quality": "Qualità",
+    "total": "Totale",
+    "listResource": "Crea Offerta",
+    "p2p": {
+      "colQuality": "Qualità",
+      "colSeller": "Mercante",
+      "colResource": "Risorsa",
+      "colAmount": "Q.tà",
+      "colPrice": "Prezzo"
+    }
+  },
+  "contracts": {
+    "title": "Contratti (B2B)",
+    "send": "Invia Contratto",
+    "receiver": "Destinatario",
+    "incoming": "Contratti in Entrata",
+    "outgoing": "Contratti in Uscita",
+    "accept": "Accetta",
+    "reject": "Rifiuta",
+    "cancel": "Annulla"
+  },
+  "bonds": {
+    "title": "Banca di Roma",
+    "issue": "Emetti Obbligazione",
+    "principal": "Capitale Richiesto",
+    "interest": "Tasso di Interesse (%)",
+    "market": "Mercato Obbligazionario",
+    "myDebts": "I Miei Debiti",
+    "myInvestments": "I Miei Investimenti",
+    "repay": "Ripaga",
+    "buy": "Investi"
+  },
+  "senate": {
+    "title": "Il Senato",
+    "leaderboard": "Classifica Globale",
+    "netWorth": "Valore Netto",
+    "rank": "Rango",
+    "player": "Senatore"
+  }
+}

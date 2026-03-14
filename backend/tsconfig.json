@@ -1,0 +1,65 @@
+{
+  /**
+   * @file backend/tsconfig.json
+   * @description TypeScript configuration for the Opes backend (Node.js).
+   *
+   * This file extends the shared base config from the monorepo root,
+   * and adds backend-specific settings (CommonJS modules, Node.js standard lib, etc.).
+   */
+  "extends": "../tsconfig.base.json",
+
+  "compilerOptions": {
+    /**
+     * "target": The JavaScript version to compile down to.
+     * ES2022 is supported by Node.js 18+ and includes modern features like
+     * top-level await, class fields, etc. We target a modern version because
+     * we control the Node.js runtime on the server (unlike in browsers,
+     * where we can't control the user's environment).
+     */
+    "target": "ES2022",
+
+    /**
+     * "module": CommonJS is the module system used by Node.js natively.
+     * It uses require() / module.exports syntax under the hood.
+     * Even though we write 'import/export' in TypeScript, the compiler
+     * transforms it to CommonJS for Node.js compatibility.
+     */
+    "module": "CommonJS",
+
+    /**
+     * "moduleResolution": "node" matches Node.js's own algorithm for
+     * resolving module paths (looks in node_modules, etc.).
+     */
+    "moduleResolution": "node",
+
+    /**
+     * "lib": The set of built-in type definitions included.
+     * ES2022 gives us types for modern JS APIs (Promise, Map, Set, etc.).
+     * We do NOT include "DOM" here because this is a backend — there is no
+     * browser DOM in Node.js. Including it would let us accidentally use
+     * browser-only APIs like 'window' or 'document' in server code.
+     */
+    "lib": ["ES2022"],
+
+    /**
+     * "outDir": Where compiled .js files are written.
+     * The 'dist' folder is the build artifact — it's what gets deployed
+     * to the production server and is excluded from version control (.gitignore).
+     */
+    "outDir": "./dist",
+
+    /**
+     * "rootDir": The root of the TypeScript source files.
+     * TypeScript uses this to mirror the src/ folder structure inside dist/.
+     * Example: src/db/connection.ts → dist/db/connection.js
+     */
+    "rootDir": "./src"
+  },
+
+  "include": ["src/**/*"],
+
+  "exclude": [
+    "node_modules",
+    "dist"
+  ]
+}

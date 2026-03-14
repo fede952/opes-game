@@ -1,0 +1,50 @@
+{
+  "_comment": "Russian (ru). Written in Cyrillic script. Official language of Russia, Belarus, Kazakhstan, and Kyrgyzstan.",
+  "_translators": "Opes Localization Team",
+
+  "common": {
+    "gameTitle": "Opes",
+    "welcome":   "Добро пожаловать в Opes!",
+    "subtitle":  "Многопользовательская экономическая симуляция в Древнем Риме и Греции.",
+    "loading":   "Загрузка...",
+    "error":     "Произошла ошибка. Пожалуйста, попробуйте снова.",
+    "devNote":   "Система i18n активна. Используйте селектор для смены языка."
+  },
+
+  "auth": {
+    "loginTitle":       "С возвращением",
+    "registerTitle":    "Присоединиться к Opes",
+    "username":         "Имя пользователя",
+    "password":         "Пароль",
+    "loginButton":      "Войти",
+    "registerButton":   "Зарегистрироваться",
+    "submitting":       "Подождите...",
+    "switchToRegister": "Нет аккаунта? Зарегистрируйтесь здесь",
+    "switchToLogin":    "Уже есть аккаунт? Войти",
+    "logoutButton":     "Выйти"
+  },
+
+  "dashboard": {
+    "greeting":         "Ave, {{username}}!",
+    "inventoryTitle":   "Ваши ресурсы",
+    "loadingInventory": "Загрузка инвентаря...",
+    "storageLabel":     "Склад",
+    "resources": {
+      "SESTERTIUS": "Сестерций",
+      "LIGNUM":     "Lignum (Дерево)",
+      "FRUMENTUM":  "Frumentum (Зерно)",
+      "FARINA":     "Farina (Мука)",
+      "RESEARCH":   "Исследования"
+    }
+  },
+
+  "market": {
+    "tabProduction": "Производство",
+    "tabMarket":     "Рынок",
+    "tabContracts":  "Контракты",
+    "tabBank":       "Банк",
+    "tabSenate":     "Сенат",
+    "yourBalance":   "Ваш баланс",
+    "available":     "доступно"
+  }
+}

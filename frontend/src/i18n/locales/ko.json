@@ -1,0 +1,50 @@
+{
+  "_comment": "Korean (ko). Written in Hangul script. Spoken in South Korea (~52M) and North Korea (~25M).",
+  "_translators": "Opes Localization Team",
+
+  "common": {
+    "gameTitle": "Opes",
+    "welcome":   "Opes에 오신 것을 환영합니다!",
+    "subtitle":  "고대 로마와 그리스를 배경으로 한 멀티플레이어 경제 시뮬레이션.",
+    "loading":   "로딩 중...",
+    "error":     "오류가 발생했습니다. 다시 시도해 주세요.",
+    "devNote":   "i18n 시스템이 활성화되었습니다. 선택기로 언어를 변경하세요."
+  },
+
+  "auth": {
+    "loginTitle":       "다시 오신 것을 환영합니다",
+    "registerTitle":    "Opes 가입",
+    "username":         "사용자 이름",
+    "password":         "비밀번호",
+    "loginButton":      "로그인",
+    "registerButton":   "회원가입",
+    "submitting":       "잠시만 기다려 주세요...",
+    "switchToRegister": "계정이 없으신가요? 여기서 가입하세요",
+    "switchToLogin":    "이미 계정이 있으신가요? 로그인",
+    "logoutButton":     "로그아웃"
+  },
+
+  "dashboard": {
+    "greeting":         "Ave, {{username}}!",
+    "inventoryTitle":   "내 자원",
+    "loadingInventory": "인벤토리 로딩 중...",
+    "storageLabel":     "창고",
+    "resources": {
+      "SESTERTIUS": "세스테르티우스",
+      "LIGNUM":     "리그눔 (목재)",
+      "FRUMENTUM":  "프루멘툼 (곡물)",
+      "FARINA":     "파리나 (밀가루)",
+      "RESEARCH":   "연구"
+    }
+  },
+
+  "market": {
+    "tabProduction": "생산",
+    "tabMarket":     "시장",
+    "tabContracts":  "계약",
+    "tabBank":       "은행",
+    "tabSenate":     "원로원",
+    "yourBalance":   "내 잔액",
+    "available":     "사용 가능"
+  }
+}

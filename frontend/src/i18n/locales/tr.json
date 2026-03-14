@@ -1,0 +1,50 @@
+{
+  "_comment": "Turkish (tr). Spoken in Turkey and Northern Cyprus. ~90 million speakers. Uses Latin script since 1928.",
+  "_translators": "Opes Localization Team",
+
+  "common": {
+    "gameTitle": "Opes",
+    "welcome":   "Opes'e Hoş Geldiniz!",
+    "subtitle":  "Antik Roma ve Yunanistan'da geçen çok oyunculu bir ekonomi simülasyonu.",
+    "loading":   "Yükleniyor...",
+    "error":     "Bir hata oluştu. Lütfen tekrar deneyin.",
+    "devNote":   "i18n sistemi etkin. Dili değiştirmek için seçiciyi kullanın."
+  },
+
+  "auth": {
+    "loginTitle":       "Tekrar hoş geldiniz",
+    "registerTitle":    "Opes'e Katıl",
+    "username":         "Kullanıcı adı",
+    "password":         "Şifre",
+    "loginButton":      "Giriş yap",
+    "registerButton":   "Kayıt ol",
+    "submitting":       "Lütfen bekleyin...",
+    "switchToRegister": "Hesabınız yok mu? Buradan kayıt olun",
+    "switchToLogin":    "Zaten hesabınız var mı? Giriş yapın",
+    "logoutButton":     "Çıkış yap"
+  },
+
+  "dashboard": {
+    "greeting":         "Ave, {{username}}!",
+    "inventoryTitle":   "Kaynaklarınız",
+    "loadingInventory": "Envanter yükleniyor...",
+    "storageLabel":     "Depo",
+    "resources": {
+      "SESTERTIUS": "Sestertius",
+      "LIGNUM":     "Lignum (Kereste)",
+      "FRUMENTUM":  "Frumentum (Tahıl)",
+      "FARINA":     "Farina (Un)",
+      "RESEARCH":   "Araştırma"
+    }
+  },
+
+  "market": {
+    "tabProduction": "Üretim",
+    "tabMarket":     "Pazar",
+    "tabContracts":  "Sözleşmeler",
+    "tabBank":       "Banka",
+    "tabSenate":     "Senato",
+    "yourBalance":   "Bakiyeniz",
+    "available":     "mevcut"
+  }
+}

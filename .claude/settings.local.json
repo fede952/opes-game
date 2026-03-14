@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install:*)",
+      "Bash(npm run:*)",
+      "Bash(node -e \"require\\('./frontend/src/i18n/locales/en.json'\\); console.log\\('JSON valid'\\)\" 2>&1)",
+      "Bash(cd C:\\\\Users\\\\fedes\\\\dev\\\\sim\\\\backend && npx tsc --noEmit 2>&1 | head -40)",
+      "Read(//mnt/c/Users/fedes/dev/sim/**)",
+      "Bash(npx tsc:*)",
+      "Bash(node -e \"import\\('./tailwind.config.js'\\).then\\(m => console.log\\('tailwind.config.js OK:', JSON.stringify\\(m.default.theme.extend.colors\\)\\)\\)\" 2>&1)",
+      "Bash(node -e \"import\\('./tailwind.config.js'\\).then\\(m => console.log\\('colors:', JSON.stringify\\(m.default.theme.extend.colors\\)\\)\\)\" 2>&1 && grep -c \"roman-\" C:/Users/fedes/dev/sim/frontend/src/components/Dashboard.tsx && grep -c \"roman-\" C:/Users/fedes/dev/sim/frontend/src/components/Market.tsx && grep -c \"roman-\" C:/Users/fedes/dev/sim/frontend/src/components/Contracts.tsx && grep -c \"roman-\" C:/Users/fedes/dev/sim/frontend/src/components/Bank.tsx && grep -c \"roman-\" C:/Users/fedes/dev/sim/frontend/src/components/Senate.tsx && grep -c \"roman-\" C:/Users/fedes/dev/sim/frontend/src/App.tsx)",
+      "Bash(grep \"import './index.css'\" C:/Users/fedes/dev/sim/frontend/src/main.tsx && grep \"@tailwind\" C:/Users/fedes/dev/sim/frontend/src/index.css && npx tsc --noEmit 2>&1 | head -5 && echo \"TS OK\")",
+      "Bash(awk 'NR>=702 && NR<=1217' /c/Users/fedes/dev/sim/frontend/src/components/Dashboard.tsx | grep -o '<div\\\\|</div>' | sort | uniq -c)",
+      "Bash(awk 'NR>=624 && NR<=1218' /c/Users/fedes/dev/sim/frontend/src/components/Dashboard.tsx | grep -o '<div\\\\|</div>' | sort | uniq -c)",
+      "Bash(awk 'NR>=730 && NR<=1100' /c/Users/fedes/dev/sim/frontend/src/components/Dashboard.tsx | grep -n '<div\\\\|</div>' | head -80)"
+    ]
+  }
+}

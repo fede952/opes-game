@@ -1,0 +1,1222 @@
+/**
+ * @file src/components/Dashboard.tsx
+ * @description The main game screen: buildings with time-based production + resource inventory.
+ *
+ * ================================================================
+ * PHASE 4 — TIME-BASED PRODUCTION LOOP
+ * ================================================================
+ *
+ * Players no longer click "Produce" for instant resources. Instead, they manage
+ * a production cycle on their buildings:
+ *
+ *   1. Building is IDLE → player clicks "Start Production"
+ *      → POST /production/start { building_id }
+ *      → Server sets building to PRODUCING, records end_time
+ *
+ *   2. A countdown timer on the building card ticks down to zero.
+ *      The timer is client-side cosmetic only — the actual end_time is stored
+ *      in the database. Even if the client manipulates the timer display,
+ *      the server will reject a collect attempt before end_time passes.
+ *
+ *   3. When the timer reaches zero → player clicks "Collect!"
+ *      → POST /production/collect { building_id }
+ *      → Server verifies end_time server-side, awards resources, resets building
+ *
+ * ================================================================
+ * COUNTDOWN TIMER IMPLEMENTATION
+ * ================================================================
+ *
+ * React components only re-render when their state or props change.
+ * A countdown timer needs to update the display every second, so we need
+ * a mechanism to force re-renders on a 1-second interval.
+ *
+ * We use a `tick` state variable that a setInterval increments every second.
+ * The actual remaining time is NOT stored in state — it is computed fresh
+ * from `Date.now()` vs `building.job.end_time` on each render.
+ *
+ * Why compute instead of storing?
+ *   - Storing remaining seconds would require careful synchronization
+ *     between the interval callback and render logic.
+ *   - Computing from the fixed end_time is simpler and always accurate:
+ *     `Math.ceil((new Date(end_time).getTime() - Date.now()) / 1000)`
+ *   - If the tab is hidden and intervals fire less frequently, the computed
+ *     value catches up automatically. Stored values would be stale.
+ *
+ * The interval is cleaned up (clearInterval) when:
+ *   a) No buildings are PRODUCING (no need to tick)
+ *   b) The component unmounts (avoids memory leaks)
+ *
+ * ================================================================
+ * SERVER-AUTHORITATIVE PATTERN (same as Phase 3, extended)
+ * ================================================================
+ *
+ * After a collect, we re-fetch BOTH buildings and inventory from the server.
+ * We never compute `localInventory + yield_amount` — we use the confirmed
+ * server value. This ensures the UI always reflects the true game state.
+ */
+
+import React, { useCallback, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { useAuth } from '../context/AuthContext';
+import { apiRequest } from '../api/client';
+import LanguageSelector from './LanguageSelector';
+import ResourceIcon      from './ResourceIcon';
+import Market            from './Market';
+import Contracts         from './Contracts';
+import Bank              from './Bank';
+import Senate            from './Senate';
+
+// ================================================================
+// API RESPONSE TYPES
+// ================================================================
+
+interface ProductionJob {
+  id:             string;
+  resource_id:    string;
+  target_quality: number;  // Phase 7: quality tier of the output (0, 1, or 2)
+  start_time:     string;  // ISO timestamp — serialized from PostgreSQL TIMESTAMPTZ
+  end_time:       string;  // ISO timestamp — the authoritative "ready at" time
+  yield_amount:   number;
+}
+
+interface Building {
+  id:            string;
+  building_type: string;
+  level:         number;  // Phase 6: upgrade level (minimum 1)
+  status:        'IDLE' | 'PRODUCING';
+  job:           ProductionJob | null;
+}
+
+interface BuildingsApiResponse {
+  buildings: Building[];
+}
+
+interface InventoryRow {
+  resource_id: string;
+  quality:     number;  // Phase 7: quality tier (0, 1, or 2)
+  amount:      number;
+}
+
+interface InventoryApiResponse {
+  inventory: InventoryRow[];
+}
+
+// ================================================================
+// RESOURCE CONFIGURATION
+// ================================================================
+
+const ALL_RESOURCES = ['SESTERTIUS', 'LIGNUM', 'FRUMENTUM', 'FARINA', 'RESEARCH'] as const;
+type ResourceId = (typeof ALL_RESOURCES)[number];
+
+/**
+ * Resources that do NOT count towards physical storage capacity.
+ * SESTERTIUS — currency (treasury ledger). RESEARCH — abstract knowledge.
+ * Mirrors WEIGHTLESS_RESOURCES in backend/src/utils/storageUtils.ts.
+ */
+const WEIGHTLESS_RESOURCES = new Set<ResourceId>(['SESTERTIUS', 'RESEARCH']);
+
+/**
+ * Maps building types to the resource they produce.
+ *
+ * Mirrors server-side BUILDING_CONFIGS[x].output.
+ * Used client-side ONLY for display purposes (e.g., "Produces: Farina").
+ * The server is the authoritative source — this is cosmetic only.
+ */
+const BUILDING_RESOURCE_MAP: Readonly<Record<string, ResourceId>> = {
+  CASTRA_LIGNATORUM: 'LIGNUM',
+  FUNDUS_FRUMENTI:   'FRUMENTUM',
+  PISTRINUM:         'FARINA',
+} as const;
+
+/**
+ * Client-side mirror of server-side BUILDING_CONFIGS (src/config/gameConfig.ts).
+ *
+ * Used ONLY for UI display: showing production costs before clicking "Start",
+ * showing upgrade costs before clicking "Upgrade", and showing the Build section.
+ * The server recomputes and enforces all actual costs independently.
+ *
+ * If these values drift from the server config, the displayed costs may be
+ * incorrect, but the server transaction is always authoritative. Keep them
+ * in sync when updating gameConfig.ts.
+ */
+interface ClientBuildingDisplay {
+  output:            string;
+  base_yield:        number;
+  base_cost:         number;   // Sestertius wages per run at level 1
+  inputs:            Array<{ resource: string; amount: number }>;
+  upgrade_base_cost: number;   // Cost to upgrade: upgrade_base_cost × current_level
+  build_cost?:       number;   // One-time construction cost (undefined = starter)
+  passive?:          boolean;  // Phase 7: passive buildings (HORREUM) have no production
+}
+
+/**
+ * Client-side mirror of server-side BUILDING_CONFIGS (src/config/gameConfig.ts).
+ *
+ * Used ONLY for UI display. The server recomputes and enforces all actual costs.
+ * Keep in sync with gameConfig.ts whenever adding or changing building economics.
+ */
+const BUILDING_DISPLAY_CONFIG: Readonly<Record<string, ClientBuildingDisplay>> = {
+  CASTRA_LIGNATORUM: { output: 'LIGNUM',    base_yield: 10, base_cost: 2,  inputs: [],                                     upgrade_base_cost: 50,  passive: false },
+  FUNDUS_FRUMENTI:   { output: 'FRUMENTUM', base_yield: 15, base_cost: 3,  inputs: [],                                     upgrade_base_cost: 50,  passive: false },
+  PISTRINUM:         { output: 'FARINA',    base_yield: 5,  base_cost: 5,  inputs: [{ resource: 'FRUMENTUM', amount: 10 }], upgrade_base_cost: 100, build_cost: 100,  passive: false },
+  HORREUM:           { output: '',          base_yield: 0,  base_cost: 0,  inputs: [],                                     upgrade_base_cost: 150, build_cost: 200,  passive: true  },
+  ACADEMIA:          { output: 'RESEARCH',  base_yield: 1,  base_cost: 10, inputs: [],                                     upgrade_base_cost: 75,  build_cost: 150,  passive: false },
+} as const;
+
+/** Returns level-scaled production cost info for a building card display. */
+const getProductionDisplay = (buildingType: string, level: number) => {
+  const cfg = BUILDING_DISPLAY_CONFIG[buildingType];
+  if (!cfg) return null;
+  return {
+    wages:  cfg.base_cost * level,
+    inputs: cfg.inputs.map((i) => ({ resource: i.resource, amount: i.amount * level })),
+    yield:  cfg.base_yield * level,
+  };
+};
+
+/** Returns the Sestertius cost to upgrade from `level` to `level + 1`. */
+const getUpgradeCost = (buildingType: string, level: number): number => {
+  const cfg = BUILDING_DISPLAY_CONFIG[buildingType];
+  return cfg ? cfg.upgrade_base_cost * level : 0;
+};
+
+// ================================================================
+// UTILITIES
+// ================================================================
+
+/**
+ * Computes the number of seconds remaining until end_time.
+ *
+ * Returns 0 if end_time is in the past (production is ready to collect).
+ * Returns a positive integer if production is still in progress.
+ *
+ * Uses Math.ceil so the timer shows "1s left" rather than "0s left" in the
+ * final second — gives the player a cue to click before the server confirms ready.
+ *
+ * @param endTime - ISO timestamp string from the production job (e.g., "2024-01-01T00:01:00Z")
+ */
+const getRemainingSeconds = (endTime: string): number =>
+  Math.max(0, Math.ceil((new Date(endTime).getTime() - Date.now()) / 1000));
+
+// ================================================================
+// COMPONENT
+// ================================================================
+
+const Dashboard: React.FC = () => {
+  const { t }            = useTranslation();
+  const { user, logout } = useAuth();
+
+  // ---- BUILDINGS STATE ----
+
+  const [buildings,        setBuildings]        = useState<Building[]>([]);
+  const [isLoadingBldgs,   setIsLoadingBldgs]   = useState<boolean>(true);
+  const [buildingsError,   setBuildingsError]   = useState<string | null>(null);
+
+  // ---- INVENTORY STATE ----
+
+  const [inventory,        setInventory]        = useState<Record<ResourceId, number>>({
+    SESTERTIUS: 0,
+    LIGNUM:     0,
+    FRUMENTUM:  0,
+    FARINA:     0,
+    RESEARCH:   0,
+  });
+  const [isLoadingInv,     setIsLoadingInv]     = useState<boolean>(true);
+  const [inventoryError,   setInventoryError]   = useState<string | null>(null);
+
+  // ---- ACTION STATE ----
+
+  /**
+   * The building_id currently being acted on (start or collect in progress).
+   * null = no request in flight.
+   *
+   * We use the building_id rather than a boolean so that only the specific
+   * building being acted on shows a loading state — other buildings remain
+   * fully interactive.
+   */
+  const [actionInProgress, setActionInProgress] = useState<string | null>(null);
+
+  /** Per-building error messages shown below each building card's action button. */
+  const [buildingErrors,   setBuildingErrors]   = useState<Record<string, string>>({});
+
+  /**
+   * The building_id currently being upgraded (null = no upgrade in flight).
+   * Separate from actionInProgress so upgrade and start/collect can coexist
+   * in the UI state without interfering with each other's loading indicators.
+   */
+  const [upgradingId,      setUpgradingId]      = useState<string | null>(null);
+
+  /** Per-building upgrade error messages (separate from production errors). */
+  const [upgradeErrors,    setUpgradeErrors]    = useState<Record<string, string>>({});
+
+  /**
+   * Tracks which building_type is currently being constructed.
+   * null = no build in flight.
+   * e.g., 'PISTRINUM' while waiting for the POST /buildings/build response.
+   */
+  const [buildingType,   setBuildingType]   = useState<string | null>(null);
+
+  /** Per-building-type build error messages. */
+  const [buildErrors,    setBuildErrors]    = useState<Record<string, string>>({});
+
+  /** Per-building-type build success messages. */
+  const [buildSuccesses, setBuildSuccesses] = useState<Record<string, string>>({});
+
+  /**
+   * Phase 7: Per-building quality selection for Start Production.
+   * Maps building_id → selected quality (0, 1, or 2).
+   * Default is 0 (standard quality) — players opt into higher quality.
+   */
+  const [qualitySelections, setQualitySelections] = useState<Record<string, number>>({});
+
+  /**
+   * Increments every second when any building is PRODUCING.
+   * This forces a re-render so the countdown timer display stays up-to-date.
+   * The actual remaining time is computed from Date.now() vs end_time — not
+   * derived from tick. Tick is purely a re-render trigger.
+   */
+  const [tick, setTick] = useState<number>(0);
+
+  /**
+   * Controls which top-level tab is currently visible.
+   *
+   * 'production' — shows buildings + inventory (the existing Phase 4 view).
+   * 'market'     — shows the Market component (Phase 5: NPC + P2P trading).
+   *
+   * We manage this at the Dashboard level (not App level) so that the
+   * production data (buildings, inventory) stays fetched and fresh even
+   * while the player is browsing the Market tab. Switching back to
+   * Production is instant — no re-fetch needed unless data has changed.
+   */
+  const [activeView, setActiveView] = useState<'production' | 'market' | 'contracts' | 'bank' | 'senate'>('production');
+
+  // ================================================================
+  // DATA FETCHING
+  // ================================================================
+
+  const fetchBuildings = useCallback(async (): Promise<void> => {
+    setIsLoadingBldgs(true);
+    setBuildingsError(null);
+
+    try {
+      const data = await apiRequest<BuildingsApiResponse>('/buildings');
+      setBuildings(data.buildings);
+
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+
+      if (message.includes('Unauthorized') || message.includes('expired')) {
+        logout();
+        return;
+      }
+
+      setBuildingsError(message);
+    } finally {
+      setIsLoadingBldgs(false);
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  // NOTE: `logout` is excluded from deps intentionally — it's stable from context.
+
+  const fetchInventory = useCallback(async (): Promise<void> => {
+    setIsLoadingInv(true);
+    setInventoryError(null);
+
+    try {
+      const data = await apiRequest<InventoryApiResponse>('/inventory');
+
+      // Phase 7: multiple rows can exist per resource_id (one per quality tier).
+      // Sum all quality tiers together to get the total per resource.
+      const map = data.inventory.reduce<Record<string, number>>(
+        (acc, row) => {
+          acc[row.resource_id] = (acc[row.resource_id] ?? 0) + row.amount;
+          return acc;
+        },
+        {}
+      );
+
+      // Phase 7: inventory rows now include quality (one row per resource+quality tier).
+      // We sum all quality tiers together to get the total per resource for display.
+      // The storage bar uses these totals. Quality-specific operations go through
+      // the Market component which tracks per-quality amounts separately.
+      setInventory({
+        SESTERTIUS: map['SESTERTIUS'] ?? 0,
+        LIGNUM:     map['LIGNUM']     ?? 0,
+        FRUMENTUM:  map['FRUMENTUM']  ?? 0,
+        FARINA:     map['FARINA']     ?? 0,
+        RESEARCH:   map['RESEARCH']   ?? 0,
+      });
+
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+
+      if (message.includes('Unauthorized') || message.includes('expired')) {
+        logout();
+        return;
+      }
+
+      setInventoryError(message);
+    } finally {
+      setIsLoadingInv(false);
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Fetch both buildings and inventory when the component mounts.
+  useEffect(() => {
+    void fetchBuildings();
+    void fetchInventory();
+  }, [fetchBuildings, fetchInventory]);
+
+  /**
+   * Silently re-fetches buildings and inventory without showing loading spinners.
+   *
+   * Called every 10 seconds by the polling interval below. Unlike fetchBuildings /
+   * fetchInventory (which set isLoading=true, causing the UI to briefly blank),
+   * this function updates state in-place so the player sees the new values without
+   * any visual disruption. It swallows errors silently — a missed poll is harmless.
+   */
+  const silentRefresh = useCallback(async (): Promise<void> => {
+    try {
+      const [bldgsData, invData] = await Promise.all([
+        apiRequest<BuildingsApiResponse>('/buildings'),
+        apiRequest<InventoryApiResponse>('/inventory'),
+      ]);
+
+      setBuildings(bldgsData.buildings);
+
+      const map = invData.inventory.reduce<Record<string, number>>(
+        (acc, row) => {
+          acc[row.resource_id] = (acc[row.resource_id] ?? 0) + row.amount;
+          return acc;
+        },
+        {}
+      );
+      setInventory({
+        SESTERTIUS: map['SESTERTIUS'] ?? 0,
+        LIGNUM:     map['LIGNUM']     ?? 0,
+        FRUMENTUM:  map['FRUMENTUM']  ?? 0,
+        FARINA:     map['FARINA']     ?? 0,
+        RESEARCH:   map['RESEARCH']   ?? 0,
+      });
+    } catch {
+      // Silently swallow polling errors — a missed tick is harmless.
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ================================================================
+  // COUNTDOWN TICK INTERVAL
+  // ================================================================
+
+  /**
+   * Start a 1-second interval whenever any building is currently PRODUCING.
+   * The interval increments `tick`, which triggers a re-render, which causes
+   * getRemainingSeconds() to be called fresh with the current Date.now().
+   *
+   * The effect re-runs whenever `buildings` changes (e.g., after a collect
+   * resets a building to IDLE). If no buildings are PRODUCING, the interval
+   * is not created — no unnecessary ticking when everything is idle.
+   *
+   * The cleanup function (clearInterval) runs:
+   *   a) Before each re-run of this effect (React cleans up before re-applying)
+   *   b) When the component unmounts — prevents memory leaks / state updates
+   *      on unmounted components
+   */
+  useEffect(() => {
+    const hasProducing = buildings.some((b) => b.status === 'PRODUCING');
+    if (!hasProducing) return;
+
+    const interval = setInterval(() => {
+      setTick((prev) => prev + 1);
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [buildings]);
+
+  /**
+   * Background polling — re-fetches buildings + inventory every 10 seconds.
+   *
+   * WHY POLL?
+   *   Production jobs complete server-side on a timer. Without polling, a player
+   *   who leaves the tab open would not see that their building finished until
+   *   they manually refresh. 10-second polling keeps the state reasonably fresh
+   *   without hammering the server.
+   *
+   * WHY NOT USE WEBSOCKETS?
+   *   Simpler infrastructure. 10 s is good enough for a casual game loop.
+   *   Websockets can be added later if latency requirements tighten.
+   *
+   * silentRefresh is stable (useCallback with empty deps), so this effect
+   * only runs once on mount and its cleanup clears the interval on unmount.
+   */
+  useEffect(() => {
+    const interval = setInterval(() => {
+      void silentRefresh();
+    }, 10_000);
+
+    return () => clearInterval(interval);
+  }, [silentRefresh]);
+
+  // ================================================================
+  // ACTIONS
+  // ================================================================
+
+  const handleStartProduction = async (buildingId: string): Promise<void> => {
+    if (actionInProgress === buildingId) return;
+
+    setActionInProgress(buildingId);
+    setBuildingErrors((prev) => ({ ...prev, [buildingId]: '' }));
+
+    // Read the quality selection for this building (default 0 if not set).
+    const selectedQuality = qualitySelections[buildingId] ?? 0;
+
+    try {
+      await apiRequest('/production/start', {
+        method: 'POST',
+        body:   JSON.stringify({ building_id: buildingId, quality: selectedQuality }),
+      });
+
+      // Re-fetch buildings to get the confirmed PRODUCING state from the server.
+      // Server-authoritative: we don't optimistically flip status locally.
+      await fetchBuildings();
+
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+
+      if (message.includes('Unauthorized') || message.includes('expired')) {
+        logout();
+        return;
+      }
+
+      setBuildingErrors((prev) => ({ ...prev, [buildingId]: message }));
+    } finally {
+      setActionInProgress(null);
+    }
+  };
+
+  const handleCollect = async (buildingId: string): Promise<void> => {
+    if (actionInProgress === buildingId) return;
+
+    setActionInProgress(buildingId);
+    setBuildingErrors((prev) => ({ ...prev, [buildingId]: '' }));
+
+    try {
+      await apiRequest('/production/collect', {
+        method: 'POST',
+        body:   JSON.stringify({ building_id: buildingId }),
+      });
+
+      // Re-fetch both buildings (reset to IDLE) and inventory (new resource amounts).
+      // We fetch both in parallel for efficiency — they are independent requests.
+      await Promise.all([fetchBuildings(), fetchInventory()]);
+
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+
+      if (message.includes('Unauthorized') || message.includes('expired')) {
+        logout();
+        return;
+      }
+
+      setBuildingErrors((prev) => ({ ...prev, [buildingId]: message }));
+    } finally {
+      setActionInProgress(null);
+    }
+  };
+
+  // ================================================================
+  // UPGRADE HANDLER
+  // ================================================================
+
+  const handleUpgrade = async (buildingId: string): Promise<void> => {
+    if (upgradingId === buildingId) return;
+
+    setUpgradingId(buildingId);
+    setUpgradeErrors((prev) => ({ ...prev, [buildingId]: '' }));
+
+    try {
+      await apiRequest('/buildings/upgrade', {
+        method: 'POST',
+        body:   JSON.stringify({ user_building_id: buildingId }),
+      });
+
+      // Re-fetch buildings to show the new level, and inventory to show the
+      // reduced Sestertius balance. Fetch in parallel for efficiency.
+      await Promise.all([fetchBuildings(), fetchInventory()]);
+
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+
+      if (message.includes('Unauthorized') || message.includes('expired')) {
+        logout();
+        return;
+      }
+
+      setUpgradeErrors((prev) => ({ ...prev, [buildingId]: message }));
+    } finally {
+      setUpgradingId(null);
+    }
+  };
+
+  // ================================================================
+  // BUILD HANDLER (Phase 7: generic for any buildable building type)
+  // ================================================================
+
+  /**
+   * Constructs a new building of the given type.
+   *
+   * Replaces the Phase 6 handleBuildMill() with a generic handler that works
+   * for all buildable types: PISTRINUM, HORREUM, ACADEMIA.
+   *
+   * @param bldgType - Building type string (e.g., 'PISTRINUM', 'HORREUM').
+   */
+  const handleBuild = async (bldgType: string): Promise<void> => {
+    if (buildingType === bldgType) return;
+
+    setBuildingType(bldgType);
+    setBuildErrors((prev)    => ({ ...prev, [bldgType]: '' }));
+    setBuildSuccesses((prev) => ({ ...prev, [bldgType]: '' }));
+
+    try {
+      const data = await apiRequest<{ message: string }>('/buildings/build', {
+        method: 'POST',
+        body:   JSON.stringify({ building_type: bldgType }),
+      });
+
+      setBuildSuccesses((prev) => ({ ...prev, [bldgType]: data.message }));
+      // Re-fetch buildings (new building appears) and inventory (Sestertius deducted).
+      await Promise.all([fetchBuildings(), fetchInventory()]);
+
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+
+      if (message.includes('Unauthorized') || message.includes('expired')) {
+        logout();
+        return;
+      }
+
+      setBuildErrors((prev) => ({ ...prev, [bldgType]: message }));
+    } finally {
+      setBuildingType(null);
+    }
+  };
+
+  // ================================================================
+  // RENDER
+  // ================================================================
+
+  // Suppress unused-variable warning for `tick` — it is used implicitly
+  // to trigger re-renders via setTick, but its value is never read in JSX.
+  void tick;
+
+  // ---- Derived HUD values (needed in both sticky bar and production view) ----
+  const hudUsed = ALL_RESOURCES
+    .filter((r) => !WEIGHTLESS_RESOURCES.has(r))
+    .reduce((sum, r) => sum + (inventory[r] ?? 0), 0);
+
+  const hudHorreaBonus = buildings
+    .filter((b) => b.building_type === 'HORREUM')
+    .reduce((sum, b) => sum + b.level * 500, 0);
+
+  const hudMaxStorage = 500 + hudHorreaBonus;
+  const hudFillPct    = Math.min(100, Math.round((hudUsed / hudMaxStorage) * 100));
+  const hudCritical   = hudFillPct >= 90;
+
+  return (
+    <div className="max-w-2xl mx-auto px-6">
+
+      {/* ================================================================ */}
+      {/* STICKY HUD — always visible at top of viewport while scrolling    */}
+      {/* ================================================================ */}
+      {/*
+       * This wrapper is `sticky top-0 z-20` so it sticks to the top of the
+       * viewport when the player scrolls down the production or market view.
+       * The bg-roman-marble/95 + backdrop-blur prevent the content below from
+       * bleeding through the semi-transparent bar.
+       */}
+      <div className="sticky top-0 z-20 pt-6 pb-3 bg-roman-marble/95 backdrop-blur-sm">
+
+        {/* ---- Top row: greeting + controls ---- */}
+        <header className="flex justify-between items-center mb-3 pb-3 border-b border-roman-gold/20">
+          <h2 className="text-roman-gold m-0 text-xl font-bold">
+            {t('dashboard.greeting', { username: user?.username ?? '' })}
+          </h2>
+
+          <div className="flex items-center gap-3">
+            <LanguageSelector />
+            <button
+              onClick={logout}
+              className="px-3 py-1.5 bg-transparent border border-roman-gold text-roman-gold rounded cursor-pointer text-sm hover:bg-roman-gold hover:text-white transition-colors duration-150"
+            >
+              {t('auth.logoutButton')}
+            </button>
+          </div>
+        </header>
+
+        {/* ---- HUD bar: SESTERTIUS | STORAGE | active resources ---- */}
+        {/*
+         * Hidden while the initial data is loading to prevent flashing zeros.
+         * Once loaded it stays visible in the sticky bar regardless of active tab —
+         * the player can always see their balance while browsing Market or Senate.
+         */}
+        {!isLoadingInv && !isLoadingBldgs && (
+          <div className="flex items-center gap-3 flex-wrap text-sm">
+
+            {/* Sestertius balance */}
+            <div className="flex items-center gap-1.5 px-3 py-1 bg-amber-50 border border-roman-gold/30 rounded-full text-roman-gold font-bold">
+              <ResourceIcon resourceId="SESTERTIUS" className="w-4 h-4 object-contain" />
+              <span>{inventory.SESTERTIUS.toLocaleString()}</span>
+            </div>
+
+            {/* Storage mini-bar */}
+            <div className="flex items-center gap-1.5">
+              <span className={`text-xs font-bold ${hudCritical ? 'text-red-600' : 'text-gray-500'}`}>
+                📦 {hudUsed}/{hudMaxStorage}
+              </span>
+              <div className="w-16 h-2 bg-roman-gold/20 rounded-full overflow-hidden">
+                <div
+                  className={`h-full rounded-full transition-all duration-300 ${hudCritical ? 'bg-red-600' : 'bg-roman-gold'}`}
+                  style={{ width: `${hudFillPct}%` }}
+                />
+              </div>
+            </div>
+
+            {/* Physical resources */}
+            {(['LIGNUM', 'FRUMENTUM', 'FARINA'] as const).map((r) => (
+              <div key={r} className="flex items-center gap-1 text-roman-dark/70">
+                <ResourceIcon resourceId={r} className="w-4 h-4 object-contain" />
+                <span>{inventory[r]}</span>
+              </div>
+            ))}
+
+            {/* RESEARCH (weightless but strategic — show if player has any) */}
+            {inventory.RESEARCH > 0 && (
+              <div className="flex items-center gap-1 text-roman-dark/70">
+                <ResourceIcon resourceId="RESEARCH" className="w-4 h-4" />
+                <span>{inventory.RESEARCH}</span>
+              </div>
+            )}
+
+          </div>
+        )}
+      </div>
+
+      <div className="pt-5 pb-8">
+
+      {/* ---- TAB NAVIGATION ---- */}
+      {/*
+       * Five tabs: Production, Market, Contracts, Bank, Senate.
+       * Active tab gets a roman-purple background; inactive tabs are transparent
+       * with a bottom-border flush to the nav's border via -mb-px.
+       */}
+      <nav className="flex mb-8 border-b-2 border-roman-gold/20">
+        {(['production', 'market', 'contracts', 'bank', 'senate'] as const).map((view) => (
+          <button
+            key={view}
+            onClick={() => setActiveView(view)}
+            className={[
+              'px-5 py-2 border-none border-b-2 -mb-px cursor-pointer text-sm font-roman transition-colors duration-150',
+              activeView === view
+                ? 'bg-roman-purple text-white border-roman-purple'
+                : 'bg-transparent text-roman-purple border-transparent hover:text-roman-gold',
+            ].join(' ')}
+          >
+            {view === 'production' ? t('market.tabProduction')
+              : view === 'market'    ? t('market.tabMarket')
+              : view === 'contracts' ? t('market.tabContracts')
+              : view === 'bank'      ? t('market.tabBank')
+              :                        t('market.tabSenate')}
+          </button>
+        ))}
+      </nav>
+
+      {/* ---- PRODUCTION VIEW (buildings + inventory) ---- */}
+      {activeView === 'production' && (
+        <>
+
+      {/* ================================================================ */}
+      {/* STORAGE CAPACITY BAR (Phase 7)                                   */}
+      {/* ================================================================ */}
+      {/*
+       * Computed entirely client-side from already-fetched state:
+       *   used     = sum of all physical resource amounts (excluding SESTERTIUS, RESEARCH)
+       *   capacity = 500 + sum(HORREUM.level × 500) across all HORREUMs
+       *
+       * The server enforces the actual limit; this bar is a UX affordance.
+       */}
+      {(() => {
+        const usedStorage = ALL_RESOURCES
+          .filter((r) => !WEIGHTLESS_RESOURCES.has(r))
+          .reduce((sum, r) => sum + (inventory[r] ?? 0), 0);
+
+        const horreaBonus = buildings
+          .filter((b) => b.building_type === 'HORREUM')
+          .reduce((sum, b) => sum + b.level * 500, 0);
+        const maxStorage = 500 + horreaBonus;
+
+        const fillPct    = Math.min(100, Math.round((usedStorage / maxStorage) * 100));
+        const isCritical = fillPct >= 90;
+
+        return (
+          <div className="mb-6">
+            <div className="flex justify-between items-center mb-1.5">
+              <span className="text-xs text-gray-500">
+                {t('dashboard.storageLabel')}
+              </span>
+              <span className={`text-xs font-bold ${isCritical ? 'text-red-600' : 'text-gray-500'}`}>
+                {usedStorage} / {maxStorage}
+              </span>
+            </div>
+            {/* Progress bar track */}
+            <div className="w-full h-2 bg-roman-gold/20 rounded-full overflow-hidden">
+              {/* Filled portion — width is dynamic so we need an inline style */}
+              <div
+                className={`h-full rounded-full transition-all duration-300 ${isCritical ? 'bg-red-600' : 'bg-roman-gold'}`}
+                style={{ width: `${fillPct}%` }}
+              />
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* ================================================================ */}
+      {/* BUILDINGS SECTION                                                */}
+      {/* ================================================================ */}
+      <section className="mb-10">
+        <h3 className="text-gray-500 mb-4 font-bold">{t('buildings.title')}</h3>
+
+        {isLoadingBldgs && (
+          <p className="text-gray-400 italic">{t('buildings.loading')}</p>
+        )}
+
+        {buildingsError && (
+          <p role="alert" className="text-red-600">{buildingsError}</p>
+        )}
+
+        {!isLoadingBldgs && !buildingsError && (
+          <div className="flex flex-col gap-4">
+            {buildings.map((building) => {
+              const isActing    = actionInProgress === building.id;
+              const isUpgrading = upgradingId === building.id;
+              const bldgError   = buildingErrors[building.id];
+              const upgradeErr  = upgradeErrors[building.id];
+              const isProducing = building.status === 'PRODUCING';
+              const cfg         = BUILDING_DISPLAY_CONFIG[building.building_type];
+              const isPassive   = cfg?.passive === true;
+
+              // Compute remaining seconds fresh on each render tick.
+              const remaining = isProducing && building.job
+                ? getRemainingSeconds(building.job.end_time)
+                : 0;
+              const isReady = isProducing && remaining === 0;
+
+              // Level-scaled cost display. null for unknown building types.
+              const prodDisplay = getProductionDisplay(building.building_type, building.level);
+              const upgradeCost = getUpgradeCost(building.building_type, building.level);
+
+              // Phase 7: quality selection for this building's next production run.
+              const selectedQuality = qualitySelections[building.id] ?? 0;
+              // RESEARCH cannot be quality-produced; HORREUM is passive.
+              const canSelectQuality = !isPassive && cfg?.output !== 'RESEARCH';
+              // Additional RESEARCH cost for chosen quality tier.
+              const researchCost = canSelectQuality ? selectedQuality * 2 : 0;
+
+              // Card border changes based on status: gold for producing, blue for passive, muted for idle.
+              const cardBorder = isProducing
+                ? 'border-roman-gold'
+                : isPassive
+                  ? 'border-blue-300'
+                  : 'border-roman-gold/30';
+
+              return (
+                <div
+                  key={building.id}
+                  className={`p-4 bg-amber-50 border rounded-md ${cardBorder}`}
+                >
+                  {/* ---- ROW 1: Name + badges ---- */}
+                  <div className="flex justify-between items-center mb-2.5">
+                    <span className="font-bold text-roman-dark">
+                      {t(`buildings.${building.building_type}`)}
+                    </span>
+
+                    <div className="flex gap-1.5 items-center">
+                      {/* Level badge */}
+                      <span className="text-xs px-2 py-0.5 rounded-full bg-stone-200 text-roman-dark border border-roman-gold/50 font-bold">
+                        {t('buildings.level')} {building.level}
+                      </span>
+
+                      {/* Passive / Status badge */}
+                      <span
+                        className={[
+                          'text-xs px-2 py-0.5 rounded-full border',
+                          isPassive
+                            ? 'bg-indigo-100 text-indigo-800 border-indigo-300'
+                            : isProducing
+                              ? 'bg-yellow-100 text-yellow-800 border-yellow-400'
+                              : 'bg-green-100 text-green-800 border-green-400',
+                        ].join(' ')}
+                      >
+                        {isPassive
+                          ? t('buildings.passive')
+                          : isProducing
+                            ? t('buildings.statusProducing')
+                            : t('buildings.statusIdle')}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* ---- ROW 2: Info (left) + Buttons (right) ---- */}
+                  <div className="flex justify-between items-start gap-2">
+
+                    {/* Left column */}
+                    <div className="text-sm text-gray-500 flex-1">
+                      {isPassive ? (
+                        /* HORREUM: show storage capacity contribution */
+                        <div>
+                          {t('buildings.storageBonus')}:{' '}
+                          <strong className="text-roman-dark">
+                            +{building.level * 500} {t('buildings.storageUnits')}
+                          </strong>
+                        </div>
+                      ) : isProducing && building.job ? (
+                        /* Active production: countdown or ready */
+                        <>
+                          {isReady
+                            ? <span className="text-green-700 font-bold">
+                                ✓ {t('buildings.readyToCollect')}
+                              </span>
+                            : t('buildings.secondsLeft', { seconds: remaining })}
+                          {/* Show quality tier of the running job */}
+                          {building.job.target_quality > 0 && (
+                            <span className="ml-1.5 text-xs text-roman-gold">
+                              Q{building.job.target_quality}
+                            </span>
+                          )}
+                        </>
+                      ) : (
+                        /* Idle: show production info */
+                        <>
+                          <div className="flex items-center gap-1 flex-wrap">
+                            {t('buildings.produces')}:{' '}
+                            <strong className="text-roman-dark flex items-center gap-1">
+                              <ResourceIcon resourceId={BUILDING_RESOURCE_MAP[building.building_type] ?? ''} />
+                              {t(`dashboard.resources.${BUILDING_RESOURCE_MAP[building.building_type] ?? ''}`)}
+                            </strong>
+                            {prodDisplay && (
+                              <span className="text-gray-400">
+                                ({t('buildings.yield')}: {prodDisplay.yield})
+                              </span>
+                            )}
+                          </div>
+                          {prodDisplay && (
+                            <div className="mt-0.5 text-gray-400 flex items-center gap-1 flex-wrap">
+                              {t('buildings.cost')}: {prodDisplay.wages}{' '}
+                              <ResourceIcon resourceId="SESTERTIUS" />
+                              {t('buildings.sestLabel')}
+                              {prodDisplay.inputs.map((inp) => (
+                                <span key={inp.resource} className="flex items-center gap-1">
+                                  {','}&nbsp;{inp.amount}{' '}
+                                  <ResourceIcon resourceId={inp.resource} />
+                                  {t(`dashboard.resources.${inp.resource}`)}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                          {/* Phase 7: RESEARCH cost display when quality > 0 */}
+                          {canSelectQuality && selectedQuality > 0 && (
+                            <div className="mt-0.5 text-purple-700 text-xs">
+                              + {researchCost} {t('dashboard.resources.RESEARCH')}
+                              {' '}({t('buildings.qualityCost')})
+                            </div>
+                          )}
+                        </>
+                      )}
+                    </div>
+
+                    {/* Right column: buttons */}
+                    <div className="flex flex-col items-end gap-1.5">
+
+                      {/* Phase 7: Quality dropdown (idle, non-passive, non-RESEARCH buildings) */}
+                      {!isPassive && !isProducing && canSelectQuality && (
+                        <div className="flex items-center gap-1">
+                          <label className="text-xs text-gray-400">
+                            {t('buildings.qualityLabel')}:
+                          </label>
+                          <select
+                            value={selectedQuality}
+                            onChange={(e) => setQualitySelections((prev) => ({
+                              ...prev,
+                              [building.id]: parseInt(e.target.value, 10),
+                            }))}
+                            className="p-0.5 border border-roman-gold/60 rounded text-xs bg-amber-50 cursor-pointer"
+                          >
+                            <option value={0}>Q0</option>
+                            <option value={1}>Q1 (-{2} R)</option>
+                            <option value={2}>Q2 (-{4} R)</option>
+                          </select>
+                        </div>
+                      )}
+
+                      {/* START PRODUCTION button (idle, non-passive) */}
+                      {!isPassive && !isProducing && (
+                        <button
+                          onClick={() => void handleStartProduction(building.id)}
+                          disabled={isActing}
+                          className="px-3 py-1.5 bg-roman-gold text-white border-none rounded text-xs whitespace-nowrap cursor-pointer disabled:bg-gray-300 disabled:cursor-not-allowed hover:opacity-90 transition-opacity"
+                        >
+                          {isActing ? t('buildings.starting') : t('buildings.startButton')}
+                        </button>
+                      )}
+
+                      {/* COLLECT button (producing, non-passive) */}
+                      {!isPassive && isProducing && (
+                        <button
+                          onClick={() => void handleCollect(building.id)}
+                          disabled={!isReady || isActing}
+                          className={[
+                            'px-3 py-1.5 text-white border-none rounded text-xs min-w-[80px] whitespace-nowrap transition-opacity',
+                            isReady && !isActing
+                              ? 'bg-green-700 cursor-pointer hover:opacity-90'
+                              : 'bg-gray-300 cursor-not-allowed',
+                          ].join(' ')}
+                        >
+                          {isActing
+                            ? t('buildings.collecting')
+                            : isReady
+                              ? t('buildings.collectButton')
+                              : `${remaining}s`}
+                        </button>
+                      )}
+
+                      {/* UPGRADE button (idle only) */}
+                      {(isPassive || !isProducing) && (
+                        <button
+                          onClick={() => void handleUpgrade(building.id)}
+                          disabled={isUpgrading || isActing}
+                          title={t('buildings.upgradeTooltip', { cost: upgradeCost, nextLevel: building.level + 1 })}
+                          className="px-2.5 py-1 bg-transparent text-roman-gold border border-roman-gold/60 rounded text-xs whitespace-nowrap cursor-pointer disabled:text-gray-400 disabled:border-gray-300 disabled:cursor-not-allowed hover:bg-roman-gold hover:text-white transition-colors duration-150"
+                        >
+                          {isUpgrading
+                            ? t('buildings.upgrading')
+                            : t('buildings.upgradeButton', { cost: upgradeCost, nextLevel: building.level + 1 })}
+                        </button>
+                      )}
+
+                      {bldgError && (
+                        <span role="alert" className="text-xs text-red-600 max-w-[160px] text-right">
+                          {bldgError}
+                        </span>
+                      )}
+                      {upgradeErr && (
+                        <span role="alert" className="text-xs text-red-600 max-w-[160px] text-right">
+                          {upgradeErr}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </section>
+
+      {/* ================================================================ */}
+      {/* BUILD SECTION — construct new buildings                          */}
+      {/* ================================================================ */}
+      {/*
+       * Phase 7: Iterates over all buildable building types.
+       *   PISTRINUM — unique: hidden once the player already owns one.
+       *   HORREUM   — repeatable: always shown (stack for more storage).
+       *   ACADEMIA  — repeatable: always shown (stack for more Research).
+       */}
+      {(() => {
+        // Building types the player can construct.
+        // Order determines display order in the build section.
+        const BUILDABLE_TYPES = ['PISTRINUM', 'HORREUM', 'ACADEMIA'] as const;
+
+        // PISTRINUM is unique — hide its card once the player owns one.
+        // HORREUM and ACADEMIA have no ownership cap.
+        const ownsPistrinum = buildings.some((b) => b.building_type === 'PISTRINUM');
+        const visible = BUILDABLE_TYPES.filter((type) => type !== 'PISTRINUM' || !ownsPistrinum);
+
+        if (visible.length === 0) return null;
+
+        return (
+          <section className="mb-10">
+            <h3 className="text-gray-500 mb-4 font-bold">
+              {t('buildings.constructTitle')}
+            </h3>
+
+            <div className="flex flex-col gap-4">
+              {visible.map((bldgType) => {
+                const cfg         = BUILDING_DISPLAY_CONFIG[bldgType]!;
+                const isBuilding  = buildingType === bldgType;
+                const bldgError   = buildErrors[bldgType];
+                const bldgSuccess = buildSuccesses[bldgType];
+
+                return (
+                  <div
+                    key={bldgType}
+                    className="p-4 bg-amber-50 border border-roman-gold/30 rounded-md"
+                  >
+                    {/* ---- Row 1: Building name + "Constructable" badge ---- */}
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="font-bold text-roman-dark">
+                        {t(`buildings.${bldgType}`)}
+                      </span>
+                      <span className="text-xs px-2 py-0.5 rounded-full bg-blue-50 text-blue-800 border border-blue-300">
+                        {t('buildings.constructable')}
+                      </span>
+                    </div>
+
+                    {/* ---- Row 2: Description (left) + Build button (right) ---- */}
+                    <div className="flex justify-between items-center gap-2">
+                      {/* Left: building description */}
+                      <div className="text-sm text-gray-500 flex-1">
+                        {cfg.passive ? (
+                          /* HORREUM: passive storage building — show what each new level adds */
+                          <div>
+                            {t('buildings.storageBonus')}:{' '}
+                            <strong className="text-roman-dark">
+                              +500 {t('buildings.storageUnits')}
+                            </strong>{' '}
+                            {t('buildings.perLevel')}
+                          </div>
+                        ) : (
+                          /* Active production building (PISTRINUM, ACADEMIA): show output + yield */
+                          <div className="flex items-center gap-1 flex-wrap">
+                            {t('buildings.produces')}:{' '}
+                            <strong className="text-roman-dark flex items-center gap-1">
+                              <ResourceIcon resourceId={cfg.output} />
+                              {t(`dashboard.resources.${cfg.output}`)}
+                            </strong>{' '}
+                            ({t('buildings.yield')}: {cfg.base_yield})
+                          </div>
+                        )}
+                        {/* One-time construction cost */}
+                        <div className="mt-0.5 flex items-center gap-1 flex-wrap">
+                          {t('buildings.cost')}:{' '}
+                          <strong className="text-roman-dark flex items-center gap-1">
+                            {cfg.build_cost}
+                            <ResourceIcon resourceId="SESTERTIUS" />
+                          </strong>{' '}
+                          {t('buildings.sestLabel')}
+                          {cfg.inputs.length > 0 && (
+                            <>
+                              {', '}{t('buildings.inputsLabel')}:{' '}
+                              {cfg.inputs.map((inp, idx) => (
+                                <span key={inp.resource} className="flex items-center gap-1">
+                                  {idx > 0 ? ', ' : ''}{inp.amount}{' '}
+                                  <ResourceIcon resourceId={inp.resource} />
+                                  {t(`dashboard.resources.${inp.resource}`)}
+                                </span>
+                              ))}
+                              {' '}{t('buildings.perRun')}
+                            </>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Right: Build button + per-type feedback messages */}
+                      <div className="flex flex-col items-end gap-1.5">
+                        <button
+                          onClick={() => void handleBuild(bldgType)}
+                          disabled={isBuilding}
+                          className="px-3 py-1.5 bg-roman-purple text-white border-none rounded text-xs whitespace-nowrap cursor-pointer disabled:bg-gray-300 disabled:cursor-not-allowed hover:opacity-90 transition-opacity"
+                        >
+                          {isBuilding ? t('buildings.building') : t('buildings.buildButton')}
+                        </button>
+
+                        {bldgError && (
+                          <span role="alert" className="text-xs text-red-600 max-w-[180px] text-right">
+                            {bldgError}
+                          </span>
+                        )}
+
+                        {bldgSuccess && (
+                          <span className="text-xs text-green-700 max-w-[180px] text-right">
+                            {bldgSuccess}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        );
+      })()}
+
+      {/* ================================================================ */}
+      {/* INVENTORY SECTION                                                */}
+      {/* ================================================================ */}
+      <section>
+        <h3 className="text-gray-500 mb-4 font-bold">
+          {t('dashboard.inventoryTitle')}
+        </h3>
+
+        {isLoadingInv && (
+          <p className="text-gray-400 italic">{t('dashboard.loadingInventory')}</p>
+        )}
+
+        {inventoryError && (
+          <p role="alert" className="text-red-600">{inventoryError}</p>
+        )}
+
+        {!isLoadingInv && !inventoryError && (
+          <div className="flex flex-col gap-3">
+            {ALL_RESOURCES.map((resourceId) => (
+              <div
+                key={resourceId}
+                className="flex items-center justify-between px-5 py-3 bg-amber-50 border border-roman-gold/30 rounded-md"
+              >
+                <span className="font-bold text-roman-dark flex items-center gap-2">
+                  <ResourceIcon resourceId={resourceId} />
+                  {t(`dashboard.resources.${resourceId}`)}
+                </span>
+                <span className="text-xl text-roman-gold font-bold">
+                  {inventory[resourceId]}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+
+        </> // end activeView === 'production' fragment
+      )}
+
+      {/* ---- MARKET VIEW ---- */}
+      {/*
+       * The Market component manages its own data fetching (inventory + listings).
+       * It is fully self-contained and does not need props from Dashboard.
+       */}
+      {activeView === 'market' && <Market />}
+
+      {/* ---- CONTRACTS VIEW ---- */}
+      {/*
+       * B2B Private Contracts: send, accept, and cancel direct player trades.
+       * Manages its own data fetching — fully self-contained.
+       */}
+      {activeView === 'contracts' && <Contracts />}
+
+      {/* ---- BANK VIEW ---- */}
+      {/*
+       * Financial Bonds: issue debt instruments, invest in others' bonds,
+       * and repay loans. Manages its own data fetching.
+       */}
+      {activeView === 'bank' && <Bank />}
+
+      {/* ---- SENATE VIEW ---- */}
+      {/*
+       * Global Leaderboard: top 50 players ranked by net worth.
+       * Read-only snapshot — no economic actions taken here.
+       */}
+      {activeView === 'senate' && <Senate />}
+
+    </div>{/* end pt-5 pb-8 content wrapper */}
+    </div>
+  ); // end max-w-2xl outer container
+};
+
+export default Dashboard;

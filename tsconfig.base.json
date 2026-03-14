@@ -1,0 +1,64 @@
+{
+  /**
+   * @file tsconfig.base.json
+   * @description Shared TypeScript compiler options for the entire Opes monorepo.
+   *
+   * Both 'backend/tsconfig.json' and 'frontend/tsconfig.json' extend this file
+   * using the "extends" field. This ensures consistent compiler behavior
+   * across the whole project — no accidental differences in strictness between
+   * the backend and frontend.
+   *
+   * IMPORTANT: "strict: true" is the single most important setting here.
+   * It enables a group of checks that catch entire categories of bugs at
+   * compile time instead of at runtime (when real players are affected):
+   *   - strictNullChecks:     Prevents "Cannot read property of undefined/null".
+   *   - noImplicitAny:        Forces you to explicitly type variables, preventing
+   *                           accidental use of the dangerous 'any' type.
+   *   - strictFunctionTypes:  Catches type errors in function parameter/return types.
+   *   - strictPropertyInitialization: Ensures class properties are initialized.
+   *
+   * For a junior developer: think of these options as a safety net that catches
+   * mistakes before the code ever runs.
+   */
+  "compilerOptions": {
+    "strict": true,
+
+    /**
+     * Allows 'import x from "module"' syntax for CommonJS modules
+     * (modules that use 'module.exports = ...'). Without this, you'd need
+     * to write 'import * as x from "module"', which is more verbose.
+     */
+    "esModuleInterop": true,
+
+    /**
+     * Skips type-checking of declaration files (.d.ts) from node_modules.
+     * Some third-party packages have slightly incorrect type declarations,
+     * and checking them would produce errors in code we don't control.
+     * This is a pragmatic trade-off that keeps the build clean.
+     */
+    "skipLibCheck": true,
+
+    /**
+     * Enforces consistent file name casing across the project.
+     * Linux file systems are case-sensitive (importing 'App' vs 'app' matters),
+     * but Windows is not. This option makes TypeScript enforce case-sensitivity
+     * everywhere, preventing bugs that only appear after deploying to a
+     * Linux production server.
+     */
+    "forceConsistentCasingInFileNames": true,
+
+    /**
+     * Allows importing .json files directly with 'import data from "./file.json"'.
+     * Useful for loading configuration or static data.
+     */
+    "resolveJsonModule": true,
+
+    /**
+     * Generates corresponding .js.map files alongside compiled .js files.
+     * Source maps allow debuggers (and error tracking tools like Sentry) to
+     * map compiled JavaScript line numbers back to original TypeScript lines,
+     * making debugging production errors significantly easier.
+     */
+    "sourceMap": true
+  }
+}

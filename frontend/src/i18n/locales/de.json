@@ -1,0 +1,50 @@
+{
+  "_comment": "German (de) — Deutsch. Covers Germany (de-DE), Austria (de-AT), and Switzerland (de-CH).",
+  "_translators": "Opes Localization Team",
+
+  "common": {
+    "gameTitle": "Opes",
+    "welcome":   "Willkommen bei Opes!",
+    "subtitle":  "Eine Multiplayer-Wirtschaftssimulation im antiken Rom und Griechenland.",
+    "loading":   "Wird geladen...",
+    "error":     "Ein Fehler ist aufgetreten. Bitte versuche es erneut.",
+    "devNote":   "Das i18n-System ist aktiv. Verwende den Selektor, um die Sprache zu wechseln."
+  },
+
+  "auth": {
+    "loginTitle":       "Willkommen zurück",
+    "registerTitle":    "Opes beitreten",
+    "username":         "Benutzername",
+    "password":         "Passwort",
+    "loginButton":      "Anmelden",
+    "registerButton":   "Registrieren",
+    "submitting":       "Bitte warten...",
+    "switchToRegister": "Noch kein Konto? Hier registrieren",
+    "switchToLogin":    "Schon ein Konto? Anmelden",
+    "logoutButton":     "Abmelden"
+  },
+
+  "dashboard": {
+    "greeting":         "Ave, {{username}}!",
+    "inventoryTitle":   "Deine Ressourcen",
+    "loadingInventory": "Inventar wird geladen...",
+    "storageLabel":     "Lager",
+    "resources": {
+      "SESTERTIUS": "Sesterz",
+      "LIGNUM":     "Lignum (Holz)",
+      "FRUMENTUM":  "Frumentum (Getreide)",
+      "FARINA":     "Farina (Mehl)",
+      "RESEARCH":   "Forschung"
+    }
+  },
+
+  "market": {
+    "tabProduction": "Produktion",
+    "tabMarket":     "Markt",
+    "tabContracts":  "Verträge",
+    "tabBank":       "Bank",
+    "tabSenate":     "Senat",
+    "yourBalance":   "Dein Guthaben",
+    "available":     "verfügbar"
+  }
+}

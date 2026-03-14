@@ -1,0 +1,50 @@
+{
+  "_comment": "Portuguese — Brazil (pt-BR). Used across South America and Portugal. Covers ~260 million speakers.",
+  "_translators": "Opes Localization Team",
+
+  "common": {
+    "gameTitle": "Opes",
+    "welcome":   "Bem-vindo ao Opes!",
+    "subtitle":  "Uma simulação econômica multijogador ambientada na Roma e Grécia Antigas.",
+    "loading":   "Carregando...",
+    "error":     "Ocorreu um erro. Por favor, tente novamente.",
+    "devNote":   "O sistema i18n está ativo. Use o seletor para trocar de idioma."
+  },
+
+  "auth": {
+    "loginTitle":       "Bem-vindo de volta",
+    "registerTitle":    "Entrar no Opes",
+    "username":         "Usuário",
+    "password":         "Senha",
+    "loginButton":      "Entrar",
+    "registerButton":   "Registrar",
+    "submitting":       "Aguarde...",
+    "switchToRegister": "Não tem uma conta? Registre-se aqui",
+    "switchToLogin":    "Já tem uma conta? Entrar",
+    "logoutButton":     "Sair"
+  },
+
+  "dashboard": {
+    "greeting":         "Ave, {{username}}!",
+    "inventoryTitle":   "Seus Recursos",
+    "loadingInventory": "Carregando inventário...",
+    "storageLabel":     "Armazém",
+    "resources": {
+      "SESTERTIUS": "Sestércio",
+      "LIGNUM":     "Lignum (Madeira)",
+      "FRUMENTUM":  "Frumentum (Grão)",
+      "FARINA":     "Farina (Farinha)",
+      "RESEARCH":   "Pesquisa"
+    }
+  },
+
+  "market": {
+    "tabProduction": "Produção",
+    "tabMarket":     "Mercado",
+    "tabContracts":  "Contratos",
+    "tabBank":       "Banco",
+    "tabSenate":     "Senado",
+    "yourBalance":   "Seu saldo",
+    "available":     "disponível"
+  }
+}

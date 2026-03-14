@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+  <!--
+    Why "lang" attribute?
+    The lang attribute tells browsers, screen readers, and search engines
+    what language the page is in. This is important for:
+      - Accessibility: Screen readers use it to choose the correct pronunciation engine.
+      - SEO: Search engines index the page for the correct language/region.
+      - Browser behavior: Spell-checkers use it to select the right dictionary.
+
+    We set it to "en" (English) as the default. The i18n system in
+    src/i18n/index.ts can update this attribute dynamically when the player
+    changes languages (e.g., to "es" for Spanish), keeping it in sync
+    with the displayed content for full accessibility compliance.
+  -->
+  <head>
+    <meta charset="UTF-8" />
+
+    <!--
+      The viewport meta tag is essential for responsive design.
+      Without it, mobile browsers render the page at desktop width and scale it
+      down — text becomes tiny and the layout breaks. This tag tells the browser:
+        - width=device-width: Use the actual screen width as the viewport width.
+        - initial-scale=1.0: Don't zoom in or out on initial load.
+    -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <meta name="description" content="Opes — A browser-based multiplayer economic simulation set in Ancient Rome and Greece." />
+
+    <!--
+      Vite will replace this with the actual favicon path from the /public directory.
+      You can replace vite.svg with a custom Opes icon (toga, coin, laurel wreath, etc.)
+    -->
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+
+    <title>Opes — Ancient Economic Simulation</title>
+  </head>
+  <body>
+    <!--
+      The root mount point for the entire React application.
+
+      React uses ReactDOM.createRoot(document.getElementById('root')) in main.tsx
+      to "take over" this div and render the component tree inside it.
+      Once React mounts, this div is essentially replaced by the React app.
+
+      This pattern is called a "Single-Page Application" (SPA):
+        - The browser loads ONE HTML file (this one) on the initial visit.
+        - All subsequent "page navigations" are handled by JavaScript (React Router)
+          — the browser never requests a new HTML file from the server.
+        - The server only needs to serve this single index.html for ANY URL,
+          redirecting 404s to it (configure this in your deployment environment).
+    -->
+    <div id="root"></div>
+
+    <!--
+      Vite automatically injects the correct <script> tag here during the build.
+      In development: loads /src/main.tsx directly as an ES Module.
+      In production: loads the compiled, hashed bundle file from /dist/assets/.
+    -->
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

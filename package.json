@@ -1,0 +1,20 @@
+{
+  "name": "opes-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Opes - Multiplayer Economic Simulation set in Ancient Rome & Greece",
+  "workspaces": [
+    "backend",
+    "frontend"
+  ],
+  "scripts": {
+    "dev:backend":        "npm run dev --workspace=backend",
+    "dev:frontend":       "npm run dev --workspace=frontend",
+    "build:backend":      "npm run build --workspace=backend",
+    "build:frontend":     "npm run build --workspace=frontend",
+    "build":              "npm run build:backend && npm run build:frontend",
+    "typecheck:backend":  "npm run typecheck --workspace=backend",
+    "typecheck:frontend": "npm run typecheck --workspace=frontend",
+    "typecheck":          "npm run typecheck:backend && npm run typecheck:frontend"
+  }
+}

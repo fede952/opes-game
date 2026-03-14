@@ -1,0 +1,84 @@
+{
+  /**
+   * @file frontend/tsconfig.json
+   * @description TypeScript configuration for the Opes React frontend.
+   *
+   * This extends the shared base config and adds browser/React-specific settings.
+   * Vite does NOT use tsc to bundle code — it uses esbuild internally for speed.
+   * TypeScript here is used ONLY for type checking (tsc --noEmit).
+   * The actual compilation is handled by Vite's esbuild integration.
+   */
+  "extends": "../tsconfig.base.json",
+
+  "compilerOptions": {
+    /**
+     * "target": ES2020 is widely supported in modern browsers.
+     * Since Vite handles the actual compilation, this mainly affects
+     * which TypeScript language features are available.
+     */
+    "target": "ES2020",
+
+    /**
+     * "lib": Include type definitions for modern JavaScript AND the browser DOM.
+     * Unlike the backend, the frontend DOES run in a browser, so we need
+     * 'DOM' (for document, window, HTMLElement, etc.) and 'DOM.Iterable'
+     * (for iterating NodeLists with for...of).
+     */
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+
+    /**
+     * "module": ESNext allows using the latest ES Module syntax (import/export).
+     * Vite requires this — it serves ES Modules natively in development.
+     */
+    "module": "ESNext",
+
+    /**
+     * "moduleResolution": "bundler" is the correct setting when using a bundler
+     * like Vite. It enables features that only make sense in a bundler context,
+     * such as importing .ts files with their extension and package.json "exports"
+     * field resolution.
+     */
+    "moduleResolution": "bundler",
+
+    /**
+     * "jsx": "react-jsx" uses the new JSX transform (React 17+).
+     * This means you do NOT need to 'import React from "react"' at the top
+     * of every JSX file — the transform imports it automatically as needed.
+     * This reduces boilerplate and slightly improves bundle size.
+     */
+    "jsx": "react-jsx",
+
+    /**
+     * "noEmit": true tells TypeScript NOT to produce any output files.
+     * Vite handles all compilation. TypeScript is purely a type-checker here.
+     * This makes 'tsc' run much faster since it skips the write-to-disk step.
+     */
+    "noEmit": true,
+
+    /**
+     * "allowImportingTsExtensions": Allows writing 'import App from "./App.tsx"'
+     * with the .tsx extension explicitly. Required when "noEmit" is true.
+     */
+    "allowImportingTsExtensions": true,
+
+    /**
+     * "useDefineForClassFields": Aligns TypeScript's class field behavior with
+     * the ECMAScript standard. Required for compatibility with modern JavaScript
+     * runtimes and frameworks like React.
+     */
+    "useDefineForClassFields": true
+  },
+
+  /**
+   * "include": Only type-check files inside the src/ directory.
+   * We use a separate tsconfig.node.json for vite.config.ts (which runs in
+   * Node.js, not the browser, and needs different compiler settings).
+   */
+  "include": ["src"],
+
+  /**
+   * "references": Links to tsconfig.node.json so that 'tsc --build' also
+   * type-checks the Vite configuration file.
+   */
+  "references": [{ "path": "./tsconfig.node.json" }]
+}

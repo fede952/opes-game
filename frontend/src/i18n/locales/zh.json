@@ -1,0 +1,50 @@
+{
+  "_comment": "Simplified Chinese (zh) — 简体中文. Used in mainland China, Singapore, and Malaysia.",
+  "_translators": "Opes Localization Team",
+
+  "common": {
+    "gameTitle": "Opes",
+    "welcome":   "欢迎来到 Opes！",
+    "subtitle":  "一款以古罗马和古希腊为背景的多人经济模拟游戏。",
+    "loading":   "加载中...",
+    "error":     "发生了错误，请重试。",
+    "devNote":   "i18n 系统已激活。使用选择器切换语言。"
+  },
+
+  "auth": {
+    "loginTitle":       "欢迎回来",
+    "registerTitle":    "加入 Opes",
+    "username":         "用户名",
+    "password":         "密码",
+    "loginButton":      "登录",
+    "registerButton":   "注册",
+    "submitting":       "请稍候...",
+    "switchToRegister": "还没有账号？在此注册",
+    "switchToLogin":    "已有账号？登录",
+    "logoutButton":     "退出登录"
+  },
+
+  "dashboard": {
+    "greeting":         "Ave，{{username}}！",
+    "inventoryTitle":   "您的资源",
+    "loadingInventory": "正在加载库存...",
+    "storageLabel":     "仓库",
+    "resources": {
+      "SESTERTIUS": "塞斯特斯（货币）",
+      "LIGNUM":     "木材",
+      "FRUMENTUM":  "粮食",
+      "FARINA":     "面粉",
+      "RESEARCH":   "研究"
+    }
+  },
+
+  "market": {
+    "tabProduction": "生产",
+    "tabMarket":     "市场",
+    "tabContracts":  "合同",
+    "tabBank":       "银行",
+    "tabSenate":     "元老院",
+    "yourBalance":   "您的余额",
+    "available":     "可用"
+  }
+}

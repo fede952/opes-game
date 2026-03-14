@@ -1,0 +1,32 @@
+/*
+ * index.css — Global stylesheet
+ *
+ * The three @tailwind directives below are NOT regular CSS; Tailwind's PostCSS
+ * plugin intercepts them at build time and replaces them with generated CSS:
+ *
+ *   @tailwind base        — Preflight: a normalising reset so browsers render
+ *                           elements consistently (think normalize.css).
+ *   @tailwind components  — Any component-level utilities (mostly from plugins).
+ *   @tailwind utilities   — Every generated utility class: bg-*, text-*, p-*, etc.
+ *
+ * Order matters: base → components → utilities, so utilities always win on
+ * specificity when there's a conflict.
+ */
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ------------------------------------------------------------------ */
+/* Global base overrides                                               */
+/* ------------------------------------------------------------------ */
+
+/* Smooth scrolling throughout the app */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Apply the Roman serif font and dark background globally */
+body {
+  @apply font-roman bg-roman-marble text-roman-dark;
+}

@@ -1,0 +1,225 @@
+{
+  "_comment": "English (en) — DEFAULT language. All other locales must mirror this key structure exactly.",
+  "_translators": "Opes Localization Team",
+
+  "common": {
+    "gameTitle": "Opes",
+    "welcome":   "Welcome to Opes!",
+    "subtitle":  "A multiplayer economic simulation set in Ancient Rome & Greece.",
+    "loading":   "Loading...",
+    "error":     "An error occurred. Please try again.",
+    "devNote":   "i18n is active. Use the selector to switch languages."
+  },
+
+  "auth": {
+    "loginTitle":       "Welcome Back",
+    "registerTitle":    "Join Opes",
+    "username":         "Username",
+    "password":         "Password",
+    "loginButton":      "Login",
+    "registerButton":   "Register",
+    "submitting":       "Please wait...",
+    "switchToRegister": "No account yet? Register here",
+    "switchToLogin":    "Already have an account? Login",
+    "logoutButton":     "Logout"
+  },
+
+  "dashboard": {
+    "greeting":         "Ave, {{username}}!",
+    "inventoryTitle":   "Your Resources",
+    "loadingInventory": "Loading your inventory...",
+    "storageLabel":     "Storage",
+    "resources": {
+      "SESTERTIUS": "Sestertius",
+      "LIGNUM":     "Lignum (Wood)",
+      "FRUMENTUM":  "Frumentum (Grain)",
+      "FARINA":     "Farina (Flour)",
+      "RESEARCH":   "Research"
+    }
+  },
+
+  "buildings": {
+    "title":              "Your Buildings",
+    "loading":            "Loading buildings...",
+    "statusIdle":         "Idle",
+    "statusProducing":    "Producing",
+    "passive":            "Passive",
+    "produces":           "Produces",
+    "startButton":        "Start Production",
+    "starting":           "Starting...",
+    "collectButton":      "Collect!",
+    "collecting":         "Collecting...",
+    "secondsLeft":        "{{seconds}}s left",
+    "readyToCollect":     "Ready to collect",
+    "yield":              "Yield",
+    "cost":               "Cost",
+    "sestLabel":          "Sestertius",
+    "inputsLabel":        "Inputs",
+    "perRun":             "per run",
+    "perLevel":           "per level",
+    "level":              "Level",
+    "upgradeButton":      "Upgrade → Lv.{{nextLevel}} ({{cost}} ⚙)",
+    "upgrading":          "Upgrading...",
+    "upgradeTooltip":     "Upgrade to Level {{nextLevel}} for {{cost}} Sestertius",
+    "storageBonus":       "Storage Capacity",
+    "storageUnits":       "units",
+    "qualityLabel":       "Quality",
+    "qualityCost":        "quality cost",
+    "constructTitle":     "Construct a New Building",
+    "constructable":      "Buildable",
+    "buildButton":        "Build",
+    "building":           "Building...",
+    "CASTRA_LIGNATORUM":  "Castra Lignatorum (Lumber Camp)",
+    "FUNDUS_FRUMENTI":    "Fundus Frumenti (Grain Farm)",
+    "PISTRINUM":          "Pistrinum (Mill)",
+    "HORREUM":            "Horreum (Warehouse)",
+    "ACADEMIA":           "Academia (School)"
+  },
+
+  "market": {
+    "_comment": "Phase 5–8 — NPC Market, P2P Market, Contracts, Bank, Senate",
+
+    "tabProduction": "Production",
+    "tabMarket":     "Market",
+    "tabContracts":  "Contracts",
+    "tabBank":       "Bank",
+    "tabSenate":     "Senate",
+    "yourBalance":   "Your balance",
+    "available":     "available",
+
+    "npc": {
+      "title":         "The Empire (NPC Market)",
+      "subtitle":      "Sell resources directly to the Empire. Prices fluctuate with market events.",
+      "unitLabel":     "unit",
+      "resourceLabel": "Resource",
+      "amountLabel":   "Amount",
+      "sellButton":    "Sell to Empire",
+      "selling":       "Selling..."
+    },
+
+    "p2p": {
+      "title":           "The Forum (Player Market)",
+      "subtitle":        "Trade directly with other citizens. Set your own prices.",
+      "listForm":        "Create a New Listing",
+      "resourceLabel":   "Resource",
+      "amountLabel":     "Amount",
+      "priceLabel":      "Price / Unit (Sestertius)",
+      "listButton":      "List for Sale",
+      "listing":         "Listing...",
+      "listSuccess":     "Listed! Resources are now held in escrow.",
+      "activeListings":  "Active Listings",
+      "loadingListings": "Loading listings...",
+      "noListings":      "No listings available. Be the first to post something!",
+      "colSeller":       "Seller",
+      "colResource":     "Resource",
+      "colQuality":      "Quality",
+      "colAmount":       "Amount",
+      "colPricePerUnit": "Price / Unit",
+      "colTotal":        "Total",
+      "ownListing":      "yours",
+      "buyButton":       "Buy",
+      "buying":          "Buying...",
+      "cancelButton":    "Cancel"
+    },
+
+    "errors": {
+      "insufficientFunds":    "Not enough Sestertius.",
+      "insufficientResources": "Not enough resources.",
+      "invalidAmount":         "Please enter a valid positive amount.",
+      "invalidPrice":          "Please enter a valid positive price.",
+      "ownListing":            "You cannot buy your own listing."
+    }
+  },
+
+  "contracts": {
+    "_comment": "Phase 8 — B2B Private Contracts",
+
+    "sendTitle":           "Send a Contract",
+    "sendSubtitle":        "Propose a direct trade to another player. Resources are held in escrow until accepted or cancelled.",
+    "receiverLabel":       "Receiver (username)",
+    "receiverPlaceholder": "e.g. marcus",
+    "resourceLabel":       "Resource",
+    "amountLabel":         "Amount",
+    "priceLabel":          "Price / Unit (Sestertius)",
+    "sendButton":          "Send Contract",
+    "sending":             "Sending...",
+
+    "incomingTitle":  "Incoming Contracts",
+    "outgoingTitle":  "Outgoing Contracts",
+    "noContracts":    "No pending contracts.",
+    "loading":        "Loading contracts...",
+
+    "colFrom":         "From",
+    "colTo":           "To",
+    "colResource":     "Resource",
+    "colAmount":       "Amount",
+    "colPricePerUnit": "Price / Unit",
+    "colTotal":        "Total",
+
+    "acceptButton": "Accept",
+    "cancelButton": "Cancel",
+
+    "errors": {
+      "receiverRequired": "Please enter the receiver's username.",
+      "invalidAmount":    "Please enter a valid positive amount.",
+      "invalidPrice":     "Please enter a valid positive price."
+    }
+  },
+
+  "bonds": {
+    "_comment": "Phase 8 — Financial Bonds",
+
+    "issueTitle":    "Issue a Bond",
+    "issueSubtitle": "Request capital from the market. Set a principal and interest rate. Funds transfer when a player buys your bond.",
+    "issueButton":   "Issue Bond",
+    "issuing":       "Issuing...",
+
+    "principalLabel": "Principal (Sestertius)",
+    "rateLabel":      "Interest Rate (%)",
+    "repayPreview":   "Total repayment",
+
+    "marketTitle":         "Bond Market",
+    "myIssuedTitle":       "My Issued Bonds",
+    "myInvestmentsTitle":  "My Investments",
+    "loading":             "Loading bonds...",
+    "noMarketBonds":       "No bonds currently on the market.",
+    "noIssuedBonds":       "You have not issued any bonds.",
+    "noInvestments":       "You have not invested in any bonds.",
+
+    "colIssuer":    "Issuer",
+    "colBuyer":     "Buyer",
+    "colPrincipal": "Principal",
+    "colRate":      "Rate",
+    "colRepayment": "Repayment",
+    "colStatus":    "Status",
+
+    "buyButton":   "Invest",
+    "repayButton": "Repay",
+
+    "errors": {
+      "invalidPrincipal": "Please enter a valid positive principal amount.",
+      "invalidRate":      "Please enter a valid non-negative interest rate."
+    }
+  },
+
+  "senate": {
+    "_comment": "Phase 8 — Global Senate Leaderboard",
+
+    "title":         "The Senate",
+    "subtitle":      "Top 50 citizens ranked by total net worth. Wealth is power.",
+    "loading":       "Loading leaderboard...",
+    "refreshButton": "Refresh",
+    "refreshing":    "Refreshing...",
+    "empty":         "No players found.",
+    "you":           "you",
+
+    "colRank":       "#",
+    "colPlayer":     "Player",
+    "colSestertius": "Sestertius",
+    "colInventory":  "Inventory",
+    "colBuildings":  "Buildings",
+    "colNetWorth":   "Net Worth",
+
+    "formulaNote": "Net Worth = Sestertius + (inventory × NPC price × quality multiplier) + (buildings × upgrade cost × level)"
+  }
+}

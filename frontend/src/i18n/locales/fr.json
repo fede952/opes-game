@@ -1,0 +1,50 @@
+{
+  "_comment": "French (fr) — Français. Covers France (fr-FR), Canada (fr-CA), Belgium (fr-BE), and Switzerland (fr-CH).",
+  "_translators": "Opes Localization Team",
+
+  "common": {
+    "gameTitle": "Opes",
+    "welcome":   "Bienvenue dans Opes\u00a0!",
+    "subtitle":  "Une simulation économique multijoueur dans la Rome et la Grèce antiques.",
+    "loading":   "Chargement\u00a0...",
+    "error":     "Une erreur est survenue. Veuillez réessayer.",
+    "devNote":   "Le système i18n est actif. Utilisez le sélecteur pour changer de langue."
+  },
+
+  "auth": {
+    "loginTitle":       "Bon retour",
+    "registerTitle":    "Rejoindre Opes",
+    "username":         "Nom d'utilisateur",
+    "password":         "Mot de passe",
+    "loginButton":      "Se connecter",
+    "registerButton":   "S'inscrire",
+    "submitting":       "Veuillez patienter\u00a0...",
+    "switchToRegister": "Pas encore de compte\u00a0? S'inscrire ici",
+    "switchToLogin":    "Déjà un compte\u00a0? Se connecter",
+    "logoutButton":     "Se déconnecter"
+  },
+
+  "dashboard": {
+    "greeting":         "Ave, {{username}}\u00a0!",
+    "inventoryTitle":   "Vos Ressources",
+    "loadingInventory": "Chargement de l'inventaire\u00a0...",
+    "storageLabel":     "Stockage",
+    "resources": {
+      "SESTERTIUS": "Sesterce",
+      "LIGNUM":     "Lignum (Bois)",
+      "FRUMENTUM":  "Frumentum (Blé)",
+      "FARINA":     "Farina (Farine)",
+      "RESEARCH":   "Recherche"
+    }
+  },
+
+  "market": {
+    "tabProduction": "Production",
+    "tabMarket":     "Marché",
+    "tabContracts":  "Contrats",
+    "tabBank":       "Banque",
+    "tabSenate":     "Sénat",
+    "yourBalance":   "Votre solde",
+    "available":     "disponible"
+  }
+}

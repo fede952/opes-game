@@ -1,0 +1,28 @@
+{
+  /**
+   * @file frontend/tsconfig.node.json
+   * @description TypeScript config for files that run in Node.js, not the browser.
+   *
+   * In this project, only vite.config.ts runs in Node.js (it's executed by
+   * the Vite CLI at build time). We need a separate tsconfig for it because:
+   *   - It should NOT have "DOM" lib types (there's no browser in Node.js).
+   *   - It needs "composite: true" to be referenceable from tsconfig.json.
+   *   - It uses CommonJS or ESNext modules depending on the Vite version.
+   */
+  "compilerOptions": {
+    /**
+     * "composite": Required for project references to work.
+     * When tsconfig.json references this file, TypeScript uses "composite"
+     * projects to enable incremental builds and cross-project type checking.
+     */
+    "composite": true,
+
+    "skipLibCheck": true,
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "allowSyntheticDefaultImports": true,
+    "strict": true
+  },
+
+  "include": ["vite.config.ts"]
+}
