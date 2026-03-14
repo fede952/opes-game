@@ -407,8 +407,22 @@ const Market: React.FC = () => {
   const getQualityMultiplier = (quality: number): number => 1 + quality * 0.5;
 
   // Shared Tailwind classes for form inputs and selects.
-  const inputCls = 'px-2.5 py-1.5 border border-roman-gold/60 rounded text-sm bg-amber-50/50 text-roman-dark w-full focus:outline-none focus:ring-1 focus:ring-roman-gold';
+  const inputCls  = 'px-2.5 py-1.5 border border-roman-gold/60 rounded text-sm bg-roman-marble text-roman-dark w-full focus:outline-none focus:ring-1 focus:ring-roman-gold';
   const selectCls = `${inputCls} cursor-pointer`;
+
+  // Section header: label + decorative horizontal rule.
+  // Defined here as a helper so each section uses the same visual pattern.
+  const SectionHeader = ({ title, subtitle }: { title: string; subtitle?: string }) => (
+    <div className="mb-4">
+      <div className="flex items-center gap-3 mb-1">
+        <h3 className="text-sm font-bold text-roman-dark uppercase tracking-widest whitespace-nowrap m-0">
+          {title}
+        </h3>
+        <div className="flex-1 h-px bg-roman-gold/20" />
+      </div>
+      {subtitle && <p className="text-gray-500 text-sm m-0">{subtitle}</p>}
+    </div>
+  );
 
   // ================================================================
   // RENDER
@@ -417,17 +431,14 @@ const Market: React.FC = () => {
   return (
     <div className="flex flex-col gap-8">
 
-      {/* ---- CURRENT BALANCE BAR ---- */}
-      {/* Shows the player's wallet and physical resource totals before trading. */}
-      <div className="p-3 px-5 bg-amber-50 border border-roman-gold rounded-md flex items-center gap-4 flex-wrap">
-        <span className="text-gray-500 text-sm">
-          {t('market.yourBalance')}:
-        </span>
+      {/* ---- BALANCE BAR ---- */}
+      <div className="p-3 px-5 bg-roman-ivory rounded-xl border border-roman-gold/30 shadow-sm flex items-center gap-4 flex-wrap">
+        <span className="text-roman-stone text-sm">{t('market.yourBalance')}:</span>
         <span className="font-bold text-roman-gold text-lg flex items-center gap-1.5">
           <ResourceIcon resourceId="SESTERTIUS" className="w-5 h-5 object-contain" />
           {isLoadingInv ? '...' : sestertius} {t('dashboard.resources.SESTERTIUS')}
         </span>
-        <span className="text-gray-400 text-xs">
+        <span className="text-roman-stone text-xs">
           | {t('dashboard.resources.LIGNUM')}: {resourceAmounts['LIGNUM']}
           {' '}| {t('dashboard.resources.FRUMENTUM')}: {resourceAmounts['FRUMENTUM']}
           {' '}| {t('dashboard.resources.FARINA')}: {resourceAmounts['FARINA']}
@@ -438,12 +449,7 @@ const Market: React.FC = () => {
       {/* SECTION 1: NPC "The Empire" Market                               */}
       {/* ================================================================ */}
       <section>
-        <h3 className="text-roman-gold m-0 mb-1 text-base font-bold">
-          {t('market.npc.title')}
-        </h3>
-        <p className="text-gray-500 text-sm mb-4 mt-0">
-          {t('market.npc.subtitle')}
-        </p>
+        <SectionHeader title={t('market.npc.title')} subtitle={t('market.npc.subtitle')} />
 
         {/* Dynamic price display — live values from the npc_prices DB table.
          * Prices can fluctuate via simulateMarketEvents.ts (±20% per event).
@@ -468,7 +474,7 @@ const Market: React.FC = () => {
         )}
 
         {/* Sell form */}
-        <div className="p-4 bg-amber-50 border border-roman-gold/30 rounded-md flex gap-3 items-end flex-wrap">
+        <div className="p-4 bg-roman-ivory rounded-xl shadow-sm border border-roman-gold/20 flex gap-3 items-end flex-wrap">
 
           {/* Resource selector */}
           <div className="flex flex-col gap-1 min-w-[155px]">
@@ -576,16 +582,11 @@ const Market: React.FC = () => {
       {/* SECTION 2: P2P "The Forum" Market                                */}
       {/* ================================================================ */}
       <section>
-        <h3 className="text-roman-gold m-0 mb-1 text-base font-bold">
-          {t('market.p2p.title')}
-        </h3>
-        <p className="text-gray-500 text-sm mb-5 mt-0">
-          {t('market.p2p.subtitle')}
-        </p>
+        <SectionHeader title={t('market.p2p.title')} subtitle={t('market.p2p.subtitle')} />
 
         {/* ---- CREATE LISTING FORM ---- */}
-        <div className="p-4 bg-amber-50 border border-roman-gold/30 rounded-md mb-6">
-          <h4 className="m-0 mb-4 text-roman-dark text-base font-bold">
+        <div className="p-4 bg-roman-ivory rounded-xl shadow-sm border border-roman-gold/20 mb-6">
+          <h4 className="m-0 mb-4 text-roman-dark text-sm font-bold uppercase tracking-wider">
             {t('market.p2p.listForm')}
           </h4>
           <div className="flex gap-3 items-end flex-wrap">
@@ -687,7 +688,7 @@ const Market: React.FC = () => {
         </div>
 
         {/* ---- ACTIVE LISTINGS TABLE ---- */}
-        <h4 className="m-0 mb-3 text-roman-dark text-base font-bold">
+        <h4 className="m-0 mb-3 text-roman-dark text-sm font-bold uppercase tracking-wider">
           {t('market.p2p.activeListings')}
         </h4>
 

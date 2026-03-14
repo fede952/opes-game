@@ -71,12 +71,12 @@ import Senate            from './Senate';
 // ================================================================
 
 interface ProductionJob {
-  id:             string;
-  resource_id:    string;
-  target_quality: number;  // Phase 7: quality tier of the output (0, 1, or 2)
-  start_time:     string;  // ISO timestamp — serialized from PostgreSQL TIMESTAMPTZ
-  end_time:       string;  // ISO timestamp — the authoritative "ready at" time
-  yield_amount:   number;
+  id:            string;
+  resource_type: string;  // matches backend column name (NOT resource_id)
+  quality:       number;  // quality tier 0/1/2 — matches backend column name (NOT target_quality)
+  start_time:    string;  // ISO timestamp — serialized from PostgreSQL TIMESTAMPTZ
+  end_time:      string;  // ISO timestamp — the authoritative "ready at" time
+  // yield_amount does NOT exist in the DB; computed at collect time from config × level
 }
 
 interface Building {
@@ -621,602 +621,585 @@ const Dashboard: React.FC = () => {
   const hudCritical   = hudFillPct >= 90;
 
   return (
-    <div className="max-w-2xl mx-auto px-6">
+    /*
+     * PHASE 2 LAYOUT
+     * The outer div is full-screen. Inside it we have two zones:
+     *   1. A sticky dark navigation bar (full viewport width) — always visible.
+     *   2. A centred content area (max-w-7xl) — scrolls below the nav.
+     *
+     * This replaces the old max-w-2xl single-column layout with a wider,
+     * management-game-style UI.
+     */
+    <div className="min-h-screen">
 
       {/* ================================================================ */}
-      {/* STICKY HUD — always visible at top of viewport while scrolling    */}
+      {/* ROMAN NAVIGATION BAR                                             */}
       {/* ================================================================ */}
       {/*
-       * This wrapper is `sticky top-0 z-20` so it sticks to the top of the
-       * viewport when the player scrolls down the production or market view.
-       * The bg-roman-marble/95 + backdrop-blur prevent the content below from
-       * bleeding through the semi-transparent bar.
+       * Sticky dark header (bg-roman-dark) with three horizontal zones:
+       *   Left   — OPES brand + player greeting
+       *   Centre — HUD: Sestertius, storage bar, resource counts
+       *   Right  — language selector + logout
+       *
+       * A second row below the brand row holds the five navigation tabs.
+       * The active tab gets a gold bottom border and gold text.
        */}
-      <div className="sticky top-0 z-20 pt-6 pb-3 bg-roman-marble/95 backdrop-blur-sm">
+      <div className="sticky top-0 z-20 bg-roman-dark shadow-lg">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6">
 
-        {/* ---- Top row: greeting + controls ---- */}
-        <header className="flex justify-between items-center mb-3 pb-3 border-b border-roman-gold/20">
-          <h2 className="text-roman-gold m-0 text-xl font-bold">
-            {t('dashboard.greeting', { username: user?.username ?? '' })}
-          </h2>
+          {/* ---- Top row: brand | HUD | controls ---- */}
+          <div className="flex items-center justify-between h-14 border-b border-white/10">
 
-          <div className="flex items-center gap-3">
-            <LanguageSelector />
-            <button
-              onClick={logout}
-              className="px-3 py-1.5 bg-transparent border border-roman-gold text-roman-gold rounded cursor-pointer text-sm hover:bg-roman-gold hover:text-white transition-colors duration-150"
-            >
-              {t('auth.logoutButton')}
-            </button>
-          </div>
-        </header>
-
-        {/* ---- HUD bar: SESTERTIUS | STORAGE | active resources ---- */}
-        {/*
-         * Hidden while the initial data is loading to prevent flashing zeros.
-         * Once loaded it stays visible in the sticky bar regardless of active tab —
-         * the player can always see their balance while browsing Market or Senate.
-         */}
-        {!isLoadingInv && !isLoadingBldgs && (
-          <div className="flex items-center gap-3 flex-wrap text-sm">
-
-            {/* Sestertius balance */}
-            <div className="flex items-center gap-1.5 px-3 py-1 bg-amber-50 border border-roman-gold/30 rounded-full text-roman-gold font-bold">
-              <ResourceIcon resourceId="SESTERTIUS" className="w-4 h-4 object-contain" />
-              <span>{inventory.SESTERTIUS.toLocaleString()}</span>
-            </div>
-
-            {/* Storage mini-bar */}
-            <div className="flex items-center gap-1.5">
-              <span className={`text-xs font-bold ${hudCritical ? 'text-red-600' : 'text-gray-500'}`}>
-                📦 {hudUsed}/{hudMaxStorage}
+            {/* Left: brand */}
+            <div className="flex items-center gap-3 shrink-0">
+              <span className="text-roman-gold font-bold text-xl tracking-widest uppercase">
+                OPES
               </span>
-              <div className="w-16 h-2 bg-roman-gold/20 rounded-full overflow-hidden">
-                <div
-                  className={`h-full rounded-full transition-all duration-300 ${hudCritical ? 'bg-red-600' : 'bg-roman-gold'}`}
-                  style={{ width: `${hudFillPct}%` }}
-                />
-              </div>
+              {/* Vertical divider — hidden on narrow screens */}
+              <span className="hidden sm:block h-4 w-px bg-roman-gold/30" />
+              <span className="hidden sm:block text-roman-marble/40 text-xs tracking-widest uppercase">
+                {t('dashboard.greeting', { username: user?.username ?? '' })}
+              </span>
             </div>
 
-            {/* Physical resources */}
-            {(['LIGNUM', 'FRUMENTUM', 'FARINA'] as const).map((r) => (
-              <div key={r} className="flex items-center gap-1 text-roman-dark/70">
-                <ResourceIcon resourceId={r} className="w-4 h-4 object-contain" />
-                <span>{inventory[r]}</span>
-              </div>
-            ))}
+            {/* Centre: HUD (hidden while data loads to avoid flashing zeros) */}
+            {!isLoadingInv && !isLoadingBldgs && (
+              <div className="flex items-center gap-3 text-sm">
 
-            {/* RESEARCH (weightless but strategic — show if player has any) */}
-            {inventory.RESEARCH > 0 && (
-              <div className="flex items-center gap-1 text-roman-dark/70">
-                <ResourceIcon resourceId="RESEARCH" className="w-4 h-4" />
-                <span>{inventory.RESEARCH}</span>
+                {/* Sestertius balance pill */}
+                <div className="flex items-center gap-1.5 px-3 py-1 bg-roman-gold/10 border border-roman-gold/30 rounded-full text-roman-gold font-bold">
+                  <ResourceIcon resourceId="SESTERTIUS" className="w-4 h-4 object-contain" />
+                  <span>{inventory.SESTERTIUS.toLocaleString()}</span>
+                </div>
+
+                {/* Storage mini-bar — hidden on small screens */}
+                <div className="hidden sm:flex items-center gap-1.5">
+                  <span className={`text-xs font-bold ${hudCritical ? 'text-red-400' : 'text-roman-marble/50'}`}>
+                    {hudUsed}/{hudMaxStorage}
+                  </span>
+                  <div className="w-16 h-1.5 bg-white/10 rounded-full overflow-hidden">
+                    <div
+                      className={`h-full rounded-full transition-all duration-300 ${hudCritical ? 'bg-red-500' : 'bg-roman-gold'}`}
+                      style={{ width: `${hudFillPct}%` }}
+                    />
+                  </div>
+                </div>
+
+                {/* Physical resource counts — hidden on small/medium screens */}
+                {(['LIGNUM', 'FRUMENTUM', 'FARINA'] as const).map((r) => (
+                  <div key={r} className="hidden md:flex items-center gap-1 text-roman-marble/60">
+                    <ResourceIcon resourceId={r} className="w-4 h-4 object-contain" />
+                    <span className="text-xs">{inventory[r]}</span>
+                  </div>
+                ))}
+
+                {/* RESEARCH — only show when the player has some */}
+                {inventory.RESEARCH > 0 && (
+                  <div className="hidden md:flex items-center gap-1 text-roman-marble/60">
+                    <ResourceIcon resourceId="RESEARCH" className="w-4 h-4" />
+                    <span className="text-xs">{inventory.RESEARCH}</span>
+                  </div>
+                )}
               </div>
             )}
 
+            {/* Right: controls */}
+            <div className="flex items-center gap-2 shrink-0">
+              <LanguageSelector />
+              <button
+                onClick={logout}
+                className="px-3 py-1.5 border border-roman-gold/50 text-roman-gold rounded text-xs cursor-pointer hover:bg-roman-gold hover:text-roman-dark transition-colors duration-150"
+              >
+                {t('auth.logoutButton')}
+              </button>
+            </div>
           </div>
-        )}
+
+          {/* ---- Tab navigation row ---- */}
+          {/*
+           * Tabs sit on the dark background with a gold underline on the active tab.
+           * Using border-b-2 on each button + border-transparent on inactive ones
+           * creates a flush underline effect without any visible gap.
+           */}
+          <nav className="flex">
+            {(['production', 'market', 'contracts', 'bank', 'senate'] as const).map((view) => (
+              <button
+                key={view}
+                onClick={() => setActiveView(view)}
+                className={[
+                  'px-5 py-3 text-xs font-bold uppercase tracking-wider border-b-2 transition-colors duration-150 cursor-pointer bg-transparent',
+                  activeView === view
+                    ? 'border-roman-gold text-roman-gold'
+                    : 'border-transparent text-roman-marble/50 hover:text-roman-marble',
+                ].join(' ')}
+              >
+                {view === 'production' ? t('market.tabProduction')
+                  : view === 'market'    ? t('market.tabMarket')
+                  : view === 'contracts' ? t('market.tabContracts')
+                  : view === 'bank'      ? t('market.tabBank')
+                  :                        t('market.tabSenate')}
+              </button>
+            ))}
+          </nav>
+
+        </div>
       </div>
-
-      <div className="pt-5 pb-8">
-
-      {/* ---- TAB NAVIGATION ---- */}
-      {/*
-       * Five tabs: Production, Market, Contracts, Bank, Senate.
-       * Active tab gets a roman-purple background; inactive tabs are transparent
-       * with a bottom-border flush to the nav's border via -mb-px.
-       */}
-      <nav className="flex mb-8 border-b-2 border-roman-gold/20">
-        {(['production', 'market', 'contracts', 'bank', 'senate'] as const).map((view) => (
-          <button
-            key={view}
-            onClick={() => setActiveView(view)}
-            className={[
-              'px-5 py-2 border-none border-b-2 -mb-px cursor-pointer text-sm font-roman transition-colors duration-150',
-              activeView === view
-                ? 'bg-roman-purple text-white border-roman-purple'
-                : 'bg-transparent text-roman-purple border-transparent hover:text-roman-gold',
-            ].join(' ')}
-          >
-            {view === 'production' ? t('market.tabProduction')
-              : view === 'market'    ? t('market.tabMarket')
-              : view === 'contracts' ? t('market.tabContracts')
-              : view === 'bank'      ? t('market.tabBank')
-              :                        t('market.tabSenate')}
-          </button>
-        ))}
-      </nav>
-
-      {/* ---- PRODUCTION VIEW (buildings + inventory) ---- */}
-      {activeView === 'production' && (
-        <>
+      {/* end sticky nav */}
 
       {/* ================================================================ */}
-      {/* STORAGE CAPACITY BAR (Phase 7)                                   */}
+      {/* MAIN CONTENT AREA                                                */}
       {/* ================================================================ */}
-      {/*
-       * Computed entirely client-side from already-fetched state:
-       *   used     = sum of all physical resource amounts (excluding SESTERTIUS, RESEARCH)
-       *   capacity = 500 + sum(HORREUM.level × 500) across all HORREUMs
-       *
-       * The server enforces the actual limit; this bar is a UX affordance.
-       */}
-      {(() => {
-        const usedStorage = ALL_RESOURCES
-          .filter((r) => !WEIGHTLESS_RESOURCES.has(r))
-          .reduce((sum, r) => sum + (inventory[r] ?? 0), 0);
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
 
-        const horreaBonus = buildings
-          .filter((b) => b.building_type === 'HORREUM')
-          .reduce((sum, b) => sum + b.level * 500, 0);
-        const maxStorage = 500 + horreaBonus;
+        {/* ---- PRODUCTION VIEW ---- */}
+        {activeView === 'production' && (
+          <>
 
-        const fillPct    = Math.min(100, Math.round((usedStorage / maxStorage) * 100));
-        const isCritical = fillPct >= 90;
-
-        return (
-          <div className="mb-6">
-            <div className="flex justify-between items-center mb-1.5">
-              <span className="text-xs text-gray-500">
-                {t('dashboard.storageLabel')}
-              </span>
-              <span className={`text-xs font-bold ${isCritical ? 'text-red-600' : 'text-gray-500'}`}>
-                {usedStorage} / {maxStorage}
-              </span>
-            </div>
-            {/* Progress bar track */}
-            <div className="w-full h-2 bg-roman-gold/20 rounded-full overflow-hidden">
-              {/* Filled portion — width is dynamic so we need an inline style */}
-              <div
-                className={`h-full rounded-full transition-all duration-300 ${isCritical ? 'bg-red-600' : 'bg-roman-gold'}`}
-                style={{ width: `${fillPct}%` }}
-              />
-            </div>
-          </div>
-        );
-      })()}
-
-      {/* ================================================================ */}
-      {/* BUILDINGS SECTION                                                */}
-      {/* ================================================================ */}
-      <section className="mb-10">
-        <h3 className="text-gray-500 mb-4 font-bold">{t('buildings.title')}</h3>
-
-        {isLoadingBldgs && (
-          <p className="text-gray-400 italic">{t('buildings.loading')}</p>
-        )}
-
-        {buildingsError && (
-          <p role="alert" className="text-red-600">{buildingsError}</p>
-        )}
-
-        {!isLoadingBldgs && !buildingsError && (
-          <div className="flex flex-col gap-4">
-            {buildings.map((building) => {
-              const isActing    = actionInProgress === building.id;
-              const isUpgrading = upgradingId === building.id;
-              const bldgError   = buildingErrors[building.id];
-              const upgradeErr  = upgradeErrors[building.id];
-              const isProducing = building.status === 'PRODUCING';
-              const cfg         = BUILDING_DISPLAY_CONFIG[building.building_type];
-              const isPassive   = cfg?.passive === true;
-
-              // Compute remaining seconds fresh on each render tick.
-              const remaining = isProducing && building.job
-                ? getRemainingSeconds(building.job.end_time)
-                : 0;
-              const isReady = isProducing && remaining === 0;
-
-              // Level-scaled cost display. null for unknown building types.
-              const prodDisplay = getProductionDisplay(building.building_type, building.level);
-              const upgradeCost = getUpgradeCost(building.building_type, building.level);
-
-              // Phase 7: quality selection for this building's next production run.
-              const selectedQuality = qualitySelections[building.id] ?? 0;
-              // RESEARCH cannot be quality-produced; HORREUM is passive.
-              const canSelectQuality = !isPassive && cfg?.output !== 'RESEARCH';
-              // Additional RESEARCH cost for chosen quality tier.
-              const researchCost = canSelectQuality ? selectedQuality * 2 : 0;
-
-              // Card border changes based on status: gold for producing, blue for passive, muted for idle.
-              const cardBorder = isProducing
-                ? 'border-roman-gold'
-                : isPassive
-                  ? 'border-blue-300'
-                  : 'border-roman-gold/30';
+            {/* ---- Storage capacity bar ---- */}
+            {/*
+             * Computed client-side:
+             *   used     = sum of physical resources (SESTERTIUS and RESEARCH excluded)
+             *   capacity = 500 base + sum(HORREUM.level × 500)
+             * The server enforces the actual cap; this is a visual affordance only.
+             */}
+            {(() => {
+              const usedStorage = ALL_RESOURCES
+                .filter((r) => !WEIGHTLESS_RESOURCES.has(r))
+                .reduce((sum, r) => sum + (inventory[r] ?? 0), 0);
+              const horreaBonus = buildings
+                .filter((b) => b.building_type === 'HORREUM')
+                .reduce((sum, b) => sum + b.level * 500, 0);
+              const maxStorage = 500 + horreaBonus;
+              const fillPct    = Math.min(100, Math.round((usedStorage / maxStorage) * 100));
+              const isCritical = fillPct >= 90;
 
               return (
-                <div
-                  key={building.id}
-                  className={`p-4 bg-amber-50 border rounded-md ${cardBorder}`}
-                >
-                  {/* ---- ROW 1: Name + badges ---- */}
-                  <div className="flex justify-between items-center mb-2.5">
-                    <span className="font-bold text-roman-dark">
-                      {t(`buildings.${building.building_type}`)}
+                <div className="mb-6 p-4 bg-roman-ivory rounded-xl border border-roman-gold/20 shadow-sm">
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-xs font-bold text-roman-dark uppercase tracking-wider">
+                      {t('dashboard.storageLabel')}
                     </span>
-
-                    <div className="flex gap-1.5 items-center">
-                      {/* Level badge */}
-                      <span className="text-xs px-2 py-0.5 rounded-full bg-stone-200 text-roman-dark border border-roman-gold/50 font-bold">
-                        {t('buildings.level')} {building.level}
-                      </span>
-
-                      {/* Passive / Status badge */}
-                      <span
-                        className={[
-                          'text-xs px-2 py-0.5 rounded-full border',
-                          isPassive
-                            ? 'bg-indigo-100 text-indigo-800 border-indigo-300'
-                            : isProducing
-                              ? 'bg-yellow-100 text-yellow-800 border-yellow-400'
-                              : 'bg-green-100 text-green-800 border-green-400',
-                        ].join(' ')}
-                      >
-                        {isPassive
-                          ? t('buildings.passive')
-                          : isProducing
-                            ? t('buildings.statusProducing')
-                            : t('buildings.statusIdle')}
-                      </span>
-                    </div>
+                    <span className={`text-xs font-bold ${isCritical ? 'text-roman-red' : 'text-roman-gold'}`}>
+                      {usedStorage} / {maxStorage}
+                    </span>
                   </div>
-
-                  {/* ---- ROW 2: Info (left) + Buttons (right) ---- */}
-                  <div className="flex justify-between items-start gap-2">
-
-                    {/* Left column */}
-                    <div className="text-sm text-gray-500 flex-1">
-                      {isPassive ? (
-                        /* HORREUM: show storage capacity contribution */
-                        <div>
-                          {t('buildings.storageBonus')}:{' '}
-                          <strong className="text-roman-dark">
-                            +{building.level * 500} {t('buildings.storageUnits')}
-                          </strong>
-                        </div>
-                      ) : isProducing && building.job ? (
-                        /* Active production: countdown or ready */
-                        <>
-                          {isReady
-                            ? <span className="text-green-700 font-bold">
-                                ✓ {t('buildings.readyToCollect')}
-                              </span>
-                            : t('buildings.secondsLeft', { seconds: remaining })}
-                          {/* Show quality tier of the running job */}
-                          {building.job.target_quality > 0 && (
-                            <span className="ml-1.5 text-xs text-roman-gold">
-                              Q{building.job.target_quality}
-                            </span>
-                          )}
-                        </>
-                      ) : (
-                        /* Idle: show production info */
-                        <>
-                          <div className="flex items-center gap-1 flex-wrap">
-                            {t('buildings.produces')}:{' '}
-                            <strong className="text-roman-dark flex items-center gap-1">
-                              <ResourceIcon resourceId={BUILDING_RESOURCE_MAP[building.building_type] ?? ''} />
-                              {t(`dashboard.resources.${BUILDING_RESOURCE_MAP[building.building_type] ?? ''}`)}
-                            </strong>
-                            {prodDisplay && (
-                              <span className="text-gray-400">
-                                ({t('buildings.yield')}: {prodDisplay.yield})
-                              </span>
-                            )}
-                          </div>
-                          {prodDisplay && (
-                            <div className="mt-0.5 text-gray-400 flex items-center gap-1 flex-wrap">
-                              {t('buildings.cost')}: {prodDisplay.wages}{' '}
-                              <ResourceIcon resourceId="SESTERTIUS" />
-                              {t('buildings.sestLabel')}
-                              {prodDisplay.inputs.map((inp) => (
-                                <span key={inp.resource} className="flex items-center gap-1">
-                                  {','}&nbsp;{inp.amount}{' '}
-                                  <ResourceIcon resourceId={inp.resource} />
-                                  {t(`dashboard.resources.${inp.resource}`)}
-                                </span>
-                              ))}
-                            </div>
-                          )}
-                          {/* Phase 7: RESEARCH cost display when quality > 0 */}
-                          {canSelectQuality && selectedQuality > 0 && (
-                            <div className="mt-0.5 text-purple-700 text-xs">
-                              + {researchCost} {t('dashboard.resources.RESEARCH')}
-                              {' '}({t('buildings.qualityCost')})
-                            </div>
-                          )}
-                        </>
-                      )}
-                    </div>
-
-                    {/* Right column: buttons */}
-                    <div className="flex flex-col items-end gap-1.5">
-
-                      {/* Phase 7: Quality dropdown (idle, non-passive, non-RESEARCH buildings) */}
-                      {!isPassive && !isProducing && canSelectQuality && (
-                        <div className="flex items-center gap-1">
-                          <label className="text-xs text-gray-400">
-                            {t('buildings.qualityLabel')}:
-                          </label>
-                          <select
-                            value={selectedQuality}
-                            onChange={(e) => setQualitySelections((prev) => ({
-                              ...prev,
-                              [building.id]: parseInt(e.target.value, 10),
-                            }))}
-                            className="p-0.5 border border-roman-gold/60 rounded text-xs bg-amber-50 cursor-pointer"
-                          >
-                            <option value={0}>Q0</option>
-                            <option value={1}>Q1 (-{2} R)</option>
-                            <option value={2}>Q2 (-{4} R)</option>
-                          </select>
-                        </div>
-                      )}
-
-                      {/* START PRODUCTION button (idle, non-passive) */}
-                      {!isPassive && !isProducing && (
-                        <button
-                          onClick={() => void handleStartProduction(building.id)}
-                          disabled={isActing}
-                          className="px-3 py-1.5 bg-roman-gold text-white border-none rounded text-xs whitespace-nowrap cursor-pointer disabled:bg-gray-300 disabled:cursor-not-allowed hover:opacity-90 transition-opacity"
-                        >
-                          {isActing ? t('buildings.starting') : t('buildings.startButton')}
-                        </button>
-                      )}
-
-                      {/* COLLECT button (producing, non-passive) */}
-                      {!isPassive && isProducing && (
-                        <button
-                          onClick={() => void handleCollect(building.id)}
-                          disabled={!isReady || isActing}
-                          className={[
-                            'px-3 py-1.5 text-white border-none rounded text-xs min-w-[80px] whitespace-nowrap transition-opacity',
-                            isReady && !isActing
-                              ? 'bg-green-700 cursor-pointer hover:opacity-90'
-                              : 'bg-gray-300 cursor-not-allowed',
-                          ].join(' ')}
-                        >
-                          {isActing
-                            ? t('buildings.collecting')
-                            : isReady
-                              ? t('buildings.collectButton')
-                              : `${remaining}s`}
-                        </button>
-                      )}
-
-                      {/* UPGRADE button (idle only) */}
-                      {(isPassive || !isProducing) && (
-                        <button
-                          onClick={() => void handleUpgrade(building.id)}
-                          disabled={isUpgrading || isActing}
-                          title={t('buildings.upgradeTooltip', { cost: upgradeCost, nextLevel: building.level + 1 })}
-                          className="px-2.5 py-1 bg-transparent text-roman-gold border border-roman-gold/60 rounded text-xs whitespace-nowrap cursor-pointer disabled:text-gray-400 disabled:border-gray-300 disabled:cursor-not-allowed hover:bg-roman-gold hover:text-white transition-colors duration-150"
-                        >
-                          {isUpgrading
-                            ? t('buildings.upgrading')
-                            : t('buildings.upgradeButton', { cost: upgradeCost, nextLevel: building.level + 1 })}
-                        </button>
-                      )}
-
-                      {bldgError && (
-                        <span role="alert" className="text-xs text-red-600 max-w-[160px] text-right">
-                          {bldgError}
-                        </span>
-                      )}
-                      {upgradeErr && (
-                        <span role="alert" className="text-xs text-red-600 max-w-[160px] text-right">
-                          {upgradeErr}
-                        </span>
-                      )}
-                    </div>
+                  <div className="w-full h-2 bg-roman-gold/10 rounded-full overflow-hidden">
+                    <div
+                      className={`h-full rounded-full transition-all duration-300 ${isCritical ? 'bg-roman-red' : 'bg-roman-gold'}`}
+                      style={{ width: `${fillPct}%` }}
+                    />
                   </div>
                 </div>
               );
-            })}
-          </div>
-        )}
-      </section>
+            })()}
 
-      {/* ================================================================ */}
-      {/* BUILD SECTION — construct new buildings                          */}
-      {/* ================================================================ */}
-      {/*
-       * Phase 7: Iterates over all buildable building types.
-       *   PISTRINUM — unique: hidden once the player already owns one.
-       *   HORREUM   — repeatable: always shown (stack for more storage).
-       *   ACADEMIA  — repeatable: always shown (stack for more Research).
-       */}
-      {(() => {
-        // Building types the player can construct.
-        // Order determines display order in the build section.
-        const BUILDABLE_TYPES = ['PISTRINUM', 'HORREUM', 'ACADEMIA'] as const;
+            {/* ================================================================ */}
+            {/* BUILDINGS SECTION                                                */}
+            {/* ================================================================ */}
+            <section className="mb-8">
 
-        // PISTRINUM is unique — hide its card once the player owns one.
-        // HORREUM and ACADEMIA have no ownership cap.
-        const ownsPistrinum = buildings.some((b) => b.building_type === 'PISTRINUM');
-        const visible = BUILDABLE_TYPES.filter((type) => type !== 'PISTRINUM' || !ownsPistrinum);
+              {/* Section header: label + decorative horizontal rule */}
+              <div className="flex items-center gap-3 mb-4">
+                <h3 className="text-sm font-bold text-roman-dark uppercase tracking-widest whitespace-nowrap">
+                  {t('buildings.title')}
+                </h3>
+                <div className="flex-1 h-px bg-roman-gold/20" />
+              </div>
 
-        if (visible.length === 0) return null;
+              {isLoadingBldgs && (
+                <p className="text-gray-400 italic text-sm">{t('buildings.loading')}</p>
+              )}
+              {buildingsError && (
+                <p role="alert" className="text-roman-red text-sm">{buildingsError}</p>
+              )}
 
-        return (
-          <section className="mb-10">
-            <h3 className="text-gray-500 mb-4 font-bold">
-              {t('buildings.constructTitle')}
-            </h3>
+              {!isLoadingBldgs && !buildingsError && (
+                /*
+                 * 2-column grid on medium screens and wider.
+                 * Each building gets its own card with a coloured top-stripe
+                 * that indicates its current state at a glance.
+                 */
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {buildings.map((building) => {
+                    const isActing    = actionInProgress === building.id;
+                    const isUpgrading = upgradingId === building.id;
+                    const bldgError   = buildingErrors[building.id];
+                    const upgradeErr  = upgradeErrors[building.id];
+                    const isProducing = building.status === 'PRODUCING';
+                    const cfg         = BUILDING_DISPLAY_CONFIG[building.building_type];
+                    const isPassive   = cfg?.passive === true;
 
-            <div className="flex flex-col gap-4">
-              {visible.map((bldgType) => {
-                const cfg         = BUILDING_DISPLAY_CONFIG[bldgType]!;
-                const isBuilding  = buildingType === bldgType;
-                const bldgError   = buildErrors[bldgType];
-                const bldgSuccess = buildSuccesses[bldgType];
+                    const remaining = isProducing && building.job
+                      ? getRemainingSeconds(building.job.end_time)
+                      : 0;
+                    const isReady = isProducing && remaining === 0;
 
-                return (
-                  <div
-                    key={bldgType}
-                    className="p-4 bg-amber-50 border border-roman-gold/30 rounded-md"
-                  >
-                    {/* ---- Row 1: Building name + "Constructable" badge ---- */}
-                    <div className="flex justify-between items-center mb-2">
-                      <span className="font-bold text-roman-dark">
-                        {t(`buildings.${bldgType}`)}
-                      </span>
-                      <span className="text-xs px-2 py-0.5 rounded-full bg-blue-50 text-blue-800 border border-blue-300">
-                        {t('buildings.constructable')}
-                      </span>
-                    </div>
+                    const prodDisplay = getProductionDisplay(building.building_type, building.level);
+                    const upgradeCost = getUpgradeCost(building.building_type, building.level);
 
-                    {/* ---- Row 2: Description (left) + Build button (right) ---- */}
-                    <div className="flex justify-between items-center gap-2">
-                      {/* Left: building description */}
-                      <div className="text-sm text-gray-500 flex-1">
-                        {cfg.passive ? (
-                          /* HORREUM: passive storage building — show what each new level adds */
-                          <div>
-                            {t('buildings.storageBonus')}:{' '}
-                            <strong className="text-roman-dark">
-                              +500 {t('buildings.storageUnits')}
-                            </strong>{' '}
-                            {t('buildings.perLevel')}
+                    const selectedQuality  = qualitySelections[building.id] ?? 0;
+                    const canSelectQuality = !isPassive && cfg?.output !== 'RESEARCH';
+                    const researchCost     = canSelectQuality ? selectedQuality * 2 : 0;
+
+                    /*
+                     * Top accent stripe colour:
+                     *   gold    — building is actively producing
+                     *   blue    — passive storage building (HORREUM)
+                     *   faint   — idle production building
+                     */
+                    const accentColor = isProducing
+                      ? 'bg-roman-gold'
+                      : isPassive
+                        ? 'bg-blue-400'
+                        : 'bg-roman-gold/20';
+
+                    return (
+                      <div
+                        key={building.id}
+                        className="bg-roman-ivory rounded-xl shadow-sm border border-roman-gold/20 overflow-hidden"
+                      >
+                        {/* Coloured top stripe — visual state indicator */}
+                        <div className={`h-1 ${accentColor}`} />
+
+                        <div className="p-4">
+                          {/* Row 1: building name + badges */}
+                          <div className="flex justify-between items-start mb-3">
+                            <span className="font-bold text-roman-dark text-base">
+                              {t(`buildings.${building.building_type}`)}
+                            </span>
+                            <div className="flex gap-1.5 items-center flex-wrap justify-end">
+                              <span className="text-xs px-2 py-0.5 rounded-full bg-roman-marble border border-roman-gold/40 text-roman-dark font-bold">
+                                {t('buildings.level')} {building.level}
+                              </span>
+                              <span
+                                className={[
+                                  'text-xs px-2 py-0.5 rounded-full border',
+                                  isPassive
+                                    ? 'bg-indigo-100 text-indigo-800 border-indigo-300'
+                                    : isProducing
+                                      ? 'bg-yellow-100 text-yellow-800 border-yellow-400'
+                                      : 'bg-green-100 text-green-800 border-green-400',
+                                ].join(' ')}
+                              >
+                                {isPassive
+                                  ? t('buildings.passive')
+                                  : isProducing
+                                    ? t('buildings.statusProducing')
+                                    : t('buildings.statusIdle')}
+                              </span>
+                            </div>
                           </div>
-                        ) : (
-                          /* Active production building (PISTRINUM, ACADEMIA): show output + yield */
-                          <div className="flex items-center gap-1 flex-wrap">
-                            {t('buildings.produces')}:{' '}
-                            <strong className="text-roman-dark flex items-center gap-1">
-                              <ResourceIcon resourceId={cfg.output} />
-                              {t(`dashboard.resources.${cfg.output}`)}
-                            </strong>{' '}
-                            ({t('buildings.yield')}: {cfg.base_yield})
-                          </div>
-                        )}
-                        {/* One-time construction cost */}
-                        <div className="mt-0.5 flex items-center gap-1 flex-wrap">
-                          {t('buildings.cost')}:{' '}
-                          <strong className="text-roman-dark flex items-center gap-1">
-                            {cfg.build_cost}
-                            <ResourceIcon resourceId="SESTERTIUS" />
-                          </strong>{' '}
-                          {t('buildings.sestLabel')}
-                          {cfg.inputs.length > 0 && (
-                            <>
-                              {', '}{t('buildings.inputsLabel')}:{' '}
-                              {cfg.inputs.map((inp, idx) => (
-                                <span key={inp.resource} className="flex items-center gap-1">
-                                  {idx > 0 ? ', ' : ''}{inp.amount}{' '}
-                                  <ResourceIcon resourceId={inp.resource} />
-                                  {t(`dashboard.resources.${inp.resource}`)}
+
+                          {/* Row 2: info (left) + action buttons (right) */}
+                          <div className="flex justify-between items-start gap-3">
+
+                            {/* Left: status / production info */}
+                            <div className="text-sm text-gray-500 flex-1">
+                              {isPassive ? (
+                                <div>
+                                  {t('buildings.storageBonus')}:{' '}
+                                  <strong className="text-roman-dark">
+                                    +{building.level * 500} {t('buildings.storageUnits')}
+                                  </strong>
+                                </div>
+                              ) : isProducing && building.job ? (
+                                <>
+                                  {isReady
+                                    ? <span className="text-green-700 font-bold">✓ {t('buildings.readyToCollect')}</span>
+                                    : t('buildings.secondsLeft', { seconds: remaining })}
+                                  {building.job.quality > 0 && (
+                                    <span className="ml-1.5 text-xs text-roman-gold">
+                                      Q{building.job.quality}
+                                    </span>
+                                  )}
+                                </>
+                              ) : (
+                                <>
+                                  <div className="flex items-center gap-1 flex-wrap">
+                                    {t('buildings.produces')}:{' '}
+                                    <strong className="text-roman-dark flex items-center gap-1">
+                                      <ResourceIcon resourceId={BUILDING_RESOURCE_MAP[building.building_type] ?? ''} />
+                                      {t(`dashboard.resources.${BUILDING_RESOURCE_MAP[building.building_type] ?? ''}`)}
+                                    </strong>
+                                    {prodDisplay && (
+                                      <span className="text-gray-400">
+                                        ({t('buildings.yield')}: {prodDisplay.yield})
+                                      </span>
+                                    )}
+                                  </div>
+                                  {prodDisplay && (
+                                    <div className="mt-0.5 text-gray-400 flex items-center gap-1 flex-wrap">
+                                      {t('buildings.cost')}: {prodDisplay.wages}{' '}
+                                      <ResourceIcon resourceId="SESTERTIUS" />
+                                      {t('buildings.sestLabel')}
+                                      {prodDisplay.inputs.map((inp) => (
+                                        <span key={inp.resource} className="flex items-center gap-1">
+                                          {','}&nbsp;{inp.amount}{' '}
+                                          <ResourceIcon resourceId={inp.resource} />
+                                          {t(`dashboard.resources.${inp.resource}`)}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  )}
+                                  {canSelectQuality && selectedQuality > 0 && (
+                                    <div className="mt-0.5 text-purple-700 text-xs">
+                                      + {researchCost} {t('dashboard.resources.RESEARCH')}
+                                      {' '}({t('buildings.qualityCost')})
+                                    </div>
+                                  )}
+                                </>
+                              )}
+                            </div>
+
+                            {/* Right: buttons */}
+                            <div className="flex flex-col items-end gap-1.5 shrink-0">
+
+                              {/* Quality dropdown — idle, non-passive, non-RESEARCH buildings only */}
+                              {!isPassive && !isProducing && canSelectQuality && (
+                                <div className="flex items-center gap-1">
+                                  <label className="text-xs text-gray-400">
+                                    {t('buildings.qualityLabel')}:
+                                  </label>
+                                  <select
+                                    value={selectedQuality}
+                                    onChange={(e) => setQualitySelections((prev) => ({
+                                      ...prev,
+                                      [building.id]: parseInt(e.target.value, 10),
+                                    }))}
+                                    className="p-0.5 border border-roman-gold/60 rounded text-xs bg-roman-marble cursor-pointer"
+                                  >
+                                    <option value={0}>Q0</option>
+                                    <option value={1}>Q1 (-{2} R)</option>
+                                    <option value={2}>Q2 (-{4} R)</option>
+                                  </select>
+                                </div>
+                              )}
+
+                              {/* START PRODUCTION — idle non-passive buildings */}
+                              {!isPassive && !isProducing && (
+                                <button
+                                  onClick={() => void handleStartProduction(building.id)}
+                                  disabled={isActing}
+                                  className="px-3 py-1.5 bg-roman-gold text-white rounded text-xs whitespace-nowrap cursor-pointer disabled:bg-gray-300 disabled:cursor-not-allowed hover:opacity-90 transition-opacity border-none"
+                                >
+                                  {isActing ? t('buildings.starting') : t('buildings.startButton')}
+                                </button>
+                              )}
+
+                              {/* COLLECT — producing non-passive buildings */}
+                              {!isPassive && isProducing && (
+                                <button
+                                  onClick={() => void handleCollect(building.id)}
+                                  disabled={!isReady || isActing}
+                                  className={[
+                                    'px-3 py-1.5 text-white rounded text-xs min-w-[80px] whitespace-nowrap transition-opacity border-none',
+                                    isReady && !isActing
+                                      ? 'bg-green-700 cursor-pointer hover:opacity-90'
+                                      : 'bg-gray-300 cursor-not-allowed',
+                                  ].join(' ')}
+                                >
+                                  {isActing
+                                    ? t('buildings.collecting')
+                                    : isReady
+                                      ? t('buildings.collectButton')
+                                      : `${remaining}s`}
+                                </button>
+                              )}
+
+                              {/* UPGRADE — idle or passive buildings */}
+                              {(isPassive || !isProducing) && (
+                                <button
+                                  onClick={() => void handleUpgrade(building.id)}
+                                  disabled={isUpgrading || isActing}
+                                  title={t('buildings.upgradeTooltip', { cost: upgradeCost, nextLevel: building.level + 1 })}
+                                  className="px-2.5 py-1 bg-transparent text-roman-gold border border-roman-gold/60 rounded text-xs whitespace-nowrap cursor-pointer disabled:text-gray-400 disabled:border-gray-300 disabled:cursor-not-allowed hover:bg-roman-gold hover:text-white transition-colors duration-150"
+                                >
+                                  {isUpgrading
+                                    ? t('buildings.upgrading')
+                                    : t('buildings.upgradeButton', { cost: upgradeCost, nextLevel: building.level + 1 })}
+                                </button>
+                              )}
+
+                              {bldgError && (
+                                <span role="alert" className="text-xs text-roman-red max-w-[160px] text-right">
+                                  {bldgError}
                                 </span>
-                              ))}
-                              {' '}{t('buildings.perRun')}
-                            </>
-                          )}
+                              )}
+                              {upgradeErr && (
+                                <span role="alert" className="text-xs text-roman-red max-w-[160px] text-right">
+                                  {upgradeErr}
+                                </span>
+                              )}
+                            </div>
+                          </div>
                         </div>
                       </div>
+                    );
+                  })}
+                </div>
+              )}
+            </section>
 
-                      {/* Right: Build button + per-type feedback messages */}
-                      <div className="flex flex-col items-end gap-1.5">
-                        <button
-                          onClick={() => void handleBuild(bldgType)}
-                          disabled={isBuilding}
-                          className="px-3 py-1.5 bg-roman-purple text-white border-none rounded text-xs whitespace-nowrap cursor-pointer disabled:bg-gray-300 disabled:cursor-not-allowed hover:opacity-90 transition-opacity"
-                        >
-                          {isBuilding ? t('buildings.building') : t('buildings.buildButton')}
-                        </button>
+            {/* ================================================================ */}
+            {/* BUILD SECTION — construct new buildings                          */}
+            {/* ================================================================ */}
+            {/*
+             * PISTRINUM: unique — hidden once the player owns one.
+             * HORREUM, ACADEMIA: repeatable — always visible.
+             */}
+            {(() => {
+              const BUILDABLE_TYPES = ['PISTRINUM', 'HORREUM', 'ACADEMIA'] as const;
+              const ownsPistrinum   = buildings.some((b) => b.building_type === 'PISTRINUM');
+              const visible         = BUILDABLE_TYPES.filter((type) => type !== 'PISTRINUM' || !ownsPistrinum);
 
-                        {bldgError && (
-                          <span role="alert" className="text-xs text-red-600 max-w-[180px] text-right">
-                            {bldgError}
-                          </span>
-                        )}
+              if (visible.length === 0) return null;
 
-                        {bldgSuccess && (
-                          <span className="text-xs text-green-700 max-w-[180px] text-right">
-                            {bldgSuccess}
-                          </span>
-                        )}
-                      </div>
-                    </div>
+              return (
+                <section className="mb-8">
+                  <div className="flex items-center gap-3 mb-4">
+                    <h3 className="text-sm font-bold text-roman-dark uppercase tracking-widest whitespace-nowrap">
+                      {t('buildings.constructTitle')}
+                    </h3>
+                    <div className="flex-1 h-px bg-roman-gold/20" />
                   </div>
-                );
-              })}
-            </div>
-          </section>
-        );
-      })()}
 
-      {/* ================================================================ */}
-      {/* INVENTORY SECTION                                                */}
-      {/* ================================================================ */}
-      <section>
-        <h3 className="text-gray-500 mb-4 font-bold">
-          {t('dashboard.inventoryTitle')}
-        </h3>
+                  {/* 3-column grid — each buildable type gets its own card */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {visible.map((bldgType) => {
+                      const cfg         = BUILDING_DISPLAY_CONFIG[bldgType]!;
+                      const isBuilding  = buildingType === bldgType;
+                      const bldgError   = buildErrors[bldgType];
+                      const bldgSuccess = buildSuccesses[bldgType];
 
-        {isLoadingInv && (
-          <p className="text-gray-400 italic">{t('dashboard.loadingInventory')}</p>
-        )}
+                      return (
+                        <div
+                          key={bldgType}
+                          className="bg-roman-ivory rounded-xl shadow-sm border border-roman-gold/20 p-4 flex flex-col"
+                        >
+                          {/* Card header */}
+                          <div className="flex justify-between items-start mb-3">
+                            <span className="font-bold text-roman-dark">
+                              {t(`buildings.${bldgType}`)}
+                            </span>
+                            <span className="text-xs px-2 py-0.5 rounded-full bg-blue-50 text-blue-800 border border-blue-300 shrink-0 ml-2">
+                              {t('buildings.constructable')}
+                            </span>
+                          </div>
 
-        {inventoryError && (
-          <p role="alert" className="text-red-600">{inventoryError}</p>
-        )}
+                          {/* Card body: description + cost */}
+                          <div className="text-sm text-gray-500 mb-4 flex-1">
+                            {cfg.passive ? (
+                              <div>
+                                {t('buildings.storageBonus')}:{' '}
+                                <strong className="text-roman-dark">+500 {t('buildings.storageUnits')}</strong>
+                                {' '}{t('buildings.perLevel')}
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-1 flex-wrap">
+                                {t('buildings.produces')}:{' '}
+                                <strong className="text-roman-dark flex items-center gap-1">
+                                  <ResourceIcon resourceId={cfg.output} />
+                                  {t(`dashboard.resources.${cfg.output}`)}
+                                </strong>
+                                {' '}({t('buildings.yield')}: {cfg.base_yield})
+                              </div>
+                            )}
+                            <div className="mt-1 flex items-center gap-1 flex-wrap">
+                              {t('buildings.cost')}:{' '}
+                              <strong className="text-roman-dark flex items-center gap-1">
+                                {cfg.build_cost}
+                                <ResourceIcon resourceId="SESTERTIUS" />
+                              </strong>
+                              {' '}{t('buildings.sestLabel')}
+                            </div>
+                          </div>
 
-        {!isLoadingInv && !inventoryError && (
-          <div className="flex flex-col gap-3">
-            {ALL_RESOURCES.map((resourceId) => (
-              <div
-                key={resourceId}
-                className="flex items-center justify-between px-5 py-3 bg-amber-50 border border-roman-gold/30 rounded-md"
-              >
-                <span className="font-bold text-roman-dark flex items-center gap-2">
-                  <ResourceIcon resourceId={resourceId} />
-                  {t(`dashboard.resources.${resourceId}`)}
-                </span>
-                <span className="text-xl text-roman-gold font-bold">
-                  {inventory[resourceId]}
-                </span>
+                          {/* Card footer: button + feedback */}
+                          <div className="flex flex-col gap-1.5">
+                            <button
+                              onClick={() => void handleBuild(bldgType)}
+                              disabled={isBuilding}
+                              className="w-full px-3 py-2 bg-roman-purple text-white rounded text-xs cursor-pointer disabled:bg-gray-300 disabled:cursor-not-allowed hover:opacity-90 transition-opacity border-none font-bold"
+                            >
+                              {isBuilding ? t('buildings.building') : t('buildings.buildButton')}
+                            </button>
+                            {bldgError && (
+                              <span role="alert" className="text-xs text-roman-red">{bldgError}</span>
+                            )}
+                            {bldgSuccess && (
+                              <span className="text-xs text-green-700">{bldgSuccess}</span>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </section>
+              );
+            })()}
+
+            {/* ================================================================ */}
+            {/* INVENTORY SECTION                                                */}
+            {/* ================================================================ */}
+            <section>
+              <div className="flex items-center gap-3 mb-4">
+                <h3 className="text-sm font-bold text-roman-dark uppercase tracking-widest whitespace-nowrap">
+                  {t('dashboard.inventoryTitle')}
+                </h3>
+                <div className="flex-1 h-px bg-roman-gold/20" />
               </div>
-            ))}
-          </div>
-        )}
-      </section>
 
-        </> // end activeView === 'production' fragment
-      )}
+              {isLoadingInv && (
+                <p className="text-gray-400 italic text-sm">{t('dashboard.loadingInventory')}</p>
+              )}
+              {inventoryError && (
+                <p role="alert" className="text-roman-red text-sm">{inventoryError}</p>
+              )}
 
-      {/* ---- MARKET VIEW ---- */}
-      {/*
-       * The Market component manages its own data fetching (inventory + listings).
-       * It is fully self-contained and does not need props from Dashboard.
-       */}
-      {activeView === 'market' && <Market />}
+              {!isLoadingInv && !inventoryError && (
+                /*
+                 * 5-column resource grid (2 on mobile, 3 on sm, 5 on lg).
+                 * Each resource gets an icon, a large number, and a label.
+                 */
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+                  {ALL_RESOURCES.map((resourceId) => (
+                    <div
+                      key={resourceId}
+                      className="bg-roman-ivory rounded-xl shadow-sm border border-roman-gold/20 p-4 flex flex-col items-center gap-2 text-center"
+                    >
+                      <ResourceIcon resourceId={resourceId} className="w-8 h-8 object-contain" />
+                      <span className="text-2xl font-bold text-roman-gold">
+                        {inventory[resourceId]}
+                      </span>
+                      <span className="text-xs text-roman-stone uppercase tracking-wide">
+                        {t(`dashboard.resources.${resourceId}`)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </section>
 
-      {/* ---- CONTRACTS VIEW ---- */}
-      {/*
-       * B2B Private Contracts: send, accept, and cancel direct player trades.
-       * Manages its own data fetching — fully self-contained.
-       */}
-      {activeView === 'contracts' && <Contracts />}
+          </>
+        )} {/* end activeView === 'production' */}
 
-      {/* ---- BANK VIEW ---- */}
-      {/*
-       * Financial Bonds: issue debt instruments, invest in others' bonds,
-       * and repay loans. Manages its own data fetching.
-       */}
-      {activeView === 'bank' && <Bank />}
+        {/* ---- MARKET VIEW ---- */}
+        {activeView === 'market' && <Market />}
 
-      {/* ---- SENATE VIEW ---- */}
-      {/*
-       * Global Leaderboard: top 50 players ranked by net worth.
-       * Read-only snapshot — no economic actions taken here.
-       */}
-      {activeView === 'senate' && <Senate />}
+        {/* ---- CONTRACTS VIEW ---- */}
+        {activeView === 'contracts' && <Contracts />}
 
-    </div>{/* end pt-5 pb-8 content wrapper */}
+        {/* ---- BANK VIEW ---- */}
+        {activeView === 'bank' && <Bank />}
+
+        {/* ---- SENATE VIEW ---- */}
+        {activeView === 'senate' && <Senate />}
+
+      </div>
+      {/* end max-w-7xl content area */}
+
     </div>
-  ); // end max-w-2xl outer container
+  );
 };
 
 export default Dashboard;

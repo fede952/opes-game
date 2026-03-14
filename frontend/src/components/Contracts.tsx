@@ -248,11 +248,11 @@ const Contracts: React.FC = () => {
   // ================================================================
 
   // Shared Tailwind classes for form inputs and selects.
-  const inputCls  = 'px-2.5 py-1.5 border border-roman-gold/60 rounded text-sm bg-amber-50/50 text-roman-dark w-full focus:outline-none focus:ring-1 focus:ring-roman-gold';
+  const inputCls  = 'px-2.5 py-1.5 border border-roman-gold/60 rounded text-sm bg-roman-marble text-roman-dark w-full focus:outline-none focus:ring-1 focus:ring-roman-gold';
   const selectCls = `${inputCls} cursor-pointer`;
 
   // Table header class helpers
-  const thL = 'p-2 px-3 text-left font-bold text-xs border-b-2 border-roman-gold bg-amber-100 text-roman-dark';
+  const thL = 'p-2 px-3 text-left font-bold text-xs border-b-2 border-roman-gold bg-roman-gold/10 text-roman-dark';
   const thR = `${thL} text-right`;
   const tdL = 'py-2.5 px-3 text-sm';
   const tdR = `${tdL} text-right`;
@@ -347,14 +347,15 @@ const Contracts: React.FC = () => {
 
       {/* ---- SEND FORM ---- */}
       <section>
-        <h3 className="text-roman-gold m-0 mb-1 text-base font-bold">
-          {t('contracts.sendTitle')}
-        </h3>
-        <p className="text-gray-500 text-sm mb-4 mt-0">
-          {t('contracts.sendSubtitle')}
-        </p>
+        <div className="flex items-center gap-3 mb-1">
+          <h3 className="text-sm font-bold text-roman-dark uppercase tracking-widest whitespace-nowrap m-0">
+            {t('contracts.sendTitle')}
+          </h3>
+          <div className="flex-1 h-px bg-roman-gold/20" />
+        </div>
+        <p className="text-gray-500 text-sm mb-4">{t('contracts.sendSubtitle')}</p>
 
-        <div className="p-4 bg-amber-50 border border-roman-gold/30 rounded-md">
+        <div className="p-4 bg-roman-ivory rounded-xl shadow-sm border border-roman-gold/20">
           <div className="flex gap-3 flex-wrap items-end">
 
             {/* Receiver username */}
@@ -442,7 +443,7 @@ const Contracts: React.FC = () => {
       {/* ---- INCOMING CONTRACTS ---- */}
       {!isLoading && !loadError && (
         <section>
-          <h3 className="text-roman-gold m-0 mb-3 text-base font-bold flex items-center gap-2">
+          <h3 className="text-sm font-bold text-roman-dark uppercase tracking-widest mb-3 flex items-center gap-2">
             {t('contracts.incomingTitle')}
             {incoming.length > 0 && (
               <span className="text-xs px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-800 border border-yellow-400">
@@ -457,7 +458,7 @@ const Contracts: React.FC = () => {
       {/* ---- OUTGOING CONTRACTS ---- */}
       {!isLoading && !loadError && (
         <section>
-          <h3 className="text-roman-gold m-0 mb-3 text-base font-bold">
+          <h3 className="text-sm font-bold text-roman-dark uppercase tracking-widest mb-3">
             {t('contracts.outgoingTitle')}
           </h3>
           {renderContractTable(outgoing, false)}
